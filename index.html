@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrintAnts · Marketplace 3D</title>
+  <meta name="description" content="El mercado de objetos únicos impresos en 3D por personas reales.">
+  <meta property="og:title" content="PrintAnts · Marketplace 3D">
+  <meta property="og:description" content="El mercado de objetos únicos impresos en 3D por personas reales.">
+  <meta property="og:type" content="website">
+  <link rel="icon" type="image/png" href="logo.png" id="faviconLink">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+
+  <!-- ==============================================================
+       ENCABEZADO LIMPIO Y HUMANO
+       ============================================================== -->
+  <header class="app-header">
+    <div class="header-contenedor">
+      <a href="#inicio" class="marca" aria-label="PrintAnts Inicio">
+        <img src="emblema oscuro.png" alt="PrintAnts Logo" class="marca-emblema-img" id="logoHeader" data-identidad="emblema">
+        <div class="marca-texto">
+          <div class="marca-titulo">Print<span>Ants</span></div>
+          <div class="marca-sub">Marketplace & Talleres 3D</div>
+        </div>
+      </a>
+
+      <!-- Menú Desktop -->
+      <nav class="menu-principal" id="menuNavegacion" aria-label="Navegación principal">
+        <a href="#explorar" class="nav-enlace">Explorar</a>
+        <a href="#categorias" class="nav-enlace">Categorías</a>
+        <a href="#vendedores" class="nav-enlace">Creadores</a>
+        <a href="#cotizador" class="nav-enlace">Cotizador 3D</a>
+        <a href="#como-funciona" class="nav-enlace">¿Cómo funciona?</a>
+      </nav>
+
+      <!-- Acciones de Cabecera -->
+      <div class="header-acciones">
+        <!-- Selector visible y elegante de Modo Claro / Modo Oscuro -->
+        <button type="button" class="btn-tema-switch" id="btnCambiarTema" aria-label="Cambiar modo de color" title="Alternar entre modo claro y modo oscuro">
+          <span class="icono-tema" id="iconoTema">☀️</span>
+          <span class="texto-tema" id="textoTema">Modo claro</span>
+        </button>
+
+        <button type="button" class="btn-vender-nav" id="btnQuieroVenderNav">
+          <span>✨</span> <span>Quiero Vender</span>
+        </button>
+
+        <button type="button" class="btn-icono-nav" id="btnAbrirFavoritos" title="Mis creaciones favoritas guardadas" aria-label="Favoritos">
+          <span>❤️</span>
+          <span class="badge-conteo" id="badgeFavoritos">0</span>
+        </button>
+
+        <button type="button" class="btn-cuenta-nav" id="btnAbrirAuth">
+          <span id="textoBtnAuth">Ingresar</span>
+        </button>
+
+        <button type="button" class="btn-icono-nav" id="btnMenuMovil" aria-label="Menú móvil" style="display:none;">
+          <span>☰</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==============================================================
+       CONTENIDO PRINCIPAL
+       ============================================================== -->
+  <main>
+
+    <!-- 1. HERO HUMANO, CÁLIDO Y MEMORABLE -->
+    <section class="hero-cálido" id="inicio">
+        <div class="hero-logo-contenedor">
+            <img src="logo.png" alt="PrintAnts Logo" class="hero-logo-img" data-identidad="logo">
+        </div>
+      
+        <div class="hero-insignia">
+        <span class="punto-oro"></span>
+        <span>Pequeñas máquinas. Grandes ideas. · Creadores 3D en Colombia</span>
+      </div>
+
+      <h1>Hecho por alguien. <span class="resaltado">Pensado para ti.</span></h1>
+      
+      <p class="hero-bajada">
+        Descubre productos creados por personas que convierten sus ideas en realidad con impresión 3D.
+      </p>
+
+      <div class="hero-acciones">
+        <a href="#explorar" class="btn lg">Explorar productos</a>
+        <button type="button" class="btn secundario lg" id="btnHeroQuieroVender">Quiero vender</button>
+      </div>
+
+      <!-- Escaparate de creaciones reales de personas reales -->
+      <div class="hero-escaparate">
+        <div class="hero-escaparate-item" data-producto-click="prod-1">
+          <div class="escaparate-icono">🏮</div>
+          <div class="escaparate-detalles">
+            <h3>Lámpara Colmena Voronoi</h3>
+            <p>Creado por <span class="autor-tag">@LauraPrintLab</span> · Cali</p>
+            <strong style="color:var(--secundario); font-size:0.88rem;">$ 78.000 COP</strong>
+          </div>
+        </div>
+
+        <div class="hero-escaparate-item" data-producto-click="prod-2">
+          <div class="escaparate-icono">🎧</div>
+          <div class="escaparate-detalles">
+            <h3>Soporte Ergonómico DeskPro</h3>
+            <p>Creado por <span class="autor-tag">@PedroGaviria3D</span> · Bogotá</p>
+            <strong style="color:var(--secundario); font-size:0.88rem;">$ 54.000 COP</strong>
+          </div>
+        </div>
+
+        <div class="hero-escaparate-item" data-producto-click="prod-3">
+          <div class="escaparate-icono">🪴</div>
+          <div class="escaparate-detalles">
+            <h3>Maceta Modular "AntHill"</h3>
+            <p>Creado por <span class="autor-tag">@TallerSilvestre</span> · Bucaramanga</p>
+            <strong style="color:var(--secundario); font-size:0.88rem;">$ 42.000 COP</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. CATEGORÍAS EDITORIALES Y VISUALES -->
+    <section class="seccion-contenedor" id="categorias">
+      <div class="cabecera-bloque">
+        <div>
+          <h2>Encuentra algo hecho para ti.</h2>
+          <p>Explora piezas con identidad propia, desde iluminación cálida hasta miniaturas de autor y repuestos de ingeniería.</p>
+        </div>
+      </div>
+
+      <div class="categorias-grid" id="contenedorCategorias">
+        <!-- 1. Categoría Destacada: Hogar & Decoración -->
+        <div class="categoria-tarjeta destacada activa" data-cat="decoracion">
+          <div class="categoria-top">
+            <div class="categoria-icono">🏮</div>
+            <span class="categoria-conteo-badge">3 creaciones</span>
+          </div>
+          <div>
+            <div class="categoria-nombre">Hogar & Iluminación Cálida</div>
+            <div class="categoria-desc">Lámparas celulares Voronoi, jarrones esculturales orgánicos y macetas auto-riego biodegradables.</div>
+          </div>
+          <div class="categoria-pie-accion">
+            <span>Ver creaciones de hogar</span>
+            <span>→</span>
+          </div>
+        </div>
+
+        <!-- 2. Gadgets & Oficina -->
+        <div class="categoria-tarjeta mediana" data-cat="gadgets">
+          <div class="categoria-top">
+            <div class="categoria-icono">🎧</div>
+            <span class="categoria-conteo-badge">2 piezas</span>
+          </div>
+          <div>
+            <div class="categoria-nombre">Gadgets & Ergonomía</div>
+            <div class="categoria-desc">Soportes para auriculares, pasacables magnéticos y accesorios para tu espacio de trabajo.</div>
+          </div>
+          <div class="categoria-pie-accion">
+            <span>Explorar gadgets</span>
+            <span>→</span>
+          </div>
+        </div>
+
+        <!-- 3. Encargos a Medida / Cotizador -->
+        <div class="categoria-tarjeta personalizada-card" data-cat="personalizado">
+          <div class="categoria-top">
+            <div class="categoria-icono">🧮</div>
+            <span class="categoria-conteo-badge" style="background-color:var(--secundario); color:#FFF;">Bajo Demanda</span>
+          </div>
+          <div>
+            <div class="categoria-nombre">Encargo a Medida (STL)</div>
+            <div class="categoria-desc">¿Tienes un modelo 3D o archivo propio? Cotiza tiempo de máquina, gramos y material al instante.</div>
+          </div>
+          <div class="categoria-pie-accion">
+            <span>Abrir cotizador 3D</span>
+            <span>→</span>
+          </div>
+        </div>
+
+        <!-- 4. Miniaturas & Rol -->
+        <div class="categoria-tarjeta mediana" data-cat="juegos">
+          <div class="categoria-top">
+            <div class="categoria-icono">🐉</div>
+            <span class="categoria-conteo-badge">2 piezas</span>
+          </div>
+          <div>
+            <div class="categoria-nombre">Miniaturas & Fantasía</div>
+            <div class="categoria-desc">Figuras en resina 8K curada, torres de dados y escenografía de rol con detalle microscópico.</div>
+          </div>
+          <div class="categoria-pie-accion">
+            <span>Ver miniaturas</span>
+            <span>→</span>
+          </div>
+        </div>
+
+        <!-- 5. Repuestos & Soluciones -->
+        <div class="categoria-tarjeta mediana" data-cat="repuestos">
+          <div class="categoria-top">
+            <div class="categoria-icono">🔧</div>
+            <span class="categoria-conteo-badge">1 pieza</span>
+          </div>
+          <div>
+            <div class="categoria-nombre">Repuestos & Taller</div>
+            <div class="categoria-desc">Componentes mecánicos reforzados en nylon con fibra de carbono y roscas integradas.</div>
+          </div>
+          <div class="categoria-pie-accion">
+            <span>Ver repuestos</span>
+            <span>→</span>
+          </div>
+        </div>
+
+        <!-- 6. Todo el Catálogo -->
+        <div class="categoria-tarjeta destacada" data-cat="todas">
+          <div class="categoria-top">
+            <div class="categoria-icono">✨</div>
+            <span class="categoria-conteo-badge" id="catConteoTodas">8 piezas</span>
+          </div>
+          <div>
+            <div class="categoria-nombre">Ver Todo el Catálogo</div>
+            <div class="categoria-desc">Explora la colección completa creada por los talleres verificados de PrintAnts en todo el país.</div>
+          </div>
+          <div class="categoria-pie-accion">
+            <span>Ver todos los productos</span>
+            <span>→</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. MARKETPLACE DE PRODUCTOS DESTACADOS -->
+    <section class="seccion-contenedor" id="explorar">
+      <div class="cabecera-bloque">
+        <div>
+          <h2>Creaciones de la Comunidad</h2>
+          <p>Piezas terminadas con esmero por makers locales, listas para encargar o personalizar.</p>
+        </div>
+      </div>
+
+      <!-- Barra de Filtros y Búsqueda -->
+      <div class="filtros-marketplace">
+        <div class="busqueda-wrapper">
+          <span class="busqueda-icono">🔍</span>
+          <input type="text" id="inputBuscarProducto" class="busqueda-input" placeholder="Buscar por nombre, material o creador...">
+        </div>
+
+        <div class="filtros-selects">
+          <select id="selectFiltroCategoria" class="select-filtro" aria-label="Filtrar por categoría">
+            <option value="todas">Todas las categorías</option>
+            <option value="decoracion">Hogar & Decoración</option>
+            <option value="gadgets">Gadgets & Oficina</option>
+            <option value="juegos">Miniaturas & Rol</option>
+            <option value="repuestos">Repuestos & Taller</option>
+          </select>
+
+          <select id="selectOrdenarProducto" class="select-filtro" aria-label="Ordenar productos">
+            <option value="destacados">Creaciones destacadas</option>
+            <option value="precio_asc">Precio: Menor a Mayor</option>
+            <option value="precio_desc">Precio: Mayor a Menor</option>
+            <option value="rating">Mejor valoradas ★</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Cuadrícula de Productos -->
+      <div class="productos-grid" id="gridProductos">
+        <!-- Renderizado dinámicamente por app.js -->
+      </div>
+    </section>
+
+    <!-- 4. SECCIÓN CREADORES / TALLERES (COMUNIDAD HUMANA) -->
+    <section class="seccion-contenedor" id="vendedores">
+      <div class="cabecera-bloque">
+        <div>
+          <h2>Descubre quién está detrás de cada creación</h2>
+          <p>Personas apasionadas por el diseño y la fabricación que dan vida a cada objeto en su ciudad.</p>
+        </div>
+        <button type="button" class="btn secundario sm" id="btnUnirmeCreadores">+ Unirme como creador</button>
+      </div>
+
+      <div class="creadores-grid" id="gridCreadores">
+        <!-- Renderizado dinámicamente por app.js -->
+      </div>
+    </section>
+
+    <!-- 5. SECCIÓN "¿CÓMO FUNCIONA?" - SENCILLA Y CERCANA -->
+    <section class="seccion-contenedor" id="como-funciona">
+      <div class="como-funciona-caja">
+        <div style="text-align:center; max-width:620px; margin:0 auto 1.5rem;">
+          <h2 style="font-size:1.8rem; font-weight:800; color:var(--texto);">Cómo funciona PrintAnts</h2>
+          <p style="color:var(--texto-secundario); font-size:0.95rem;">Unimos el talento local con la tecnología de impresión 3D sin complicaciones.</p>
+        </div>
+
+        <div class="pestanas-como">
+          <button type="button" class="pestana-como-btn activa" id="pestanaCompradores">Para Quienes Buscan Productos</button>
+          <button type="button" class="pestana-como-btn" id="pestanaCreadores">Para Creadores con Máquinas</button>
+        </div>
+
+        <!-- Pasos Compradores -->
+        <div class="pasos-grid" id="bloquePasosCompradores">
+          <div class="paso-card">
+            <div class="paso-numero">1</div>
+            <h3>Encuentra.</h3>
+            <p>Explora creaciones hechas con dedicación capa por capa por talleres cercanos o cotiza tu propia idea en 3D.</p>
+          </div>
+
+          <div class="paso-card">
+            <div class="paso-numero">2</div>
+            <h3>Compra.</h3>
+            <p>Acuerda con el creador, elige el filamento o resina ideal y apoya la fabricación local con total confianza.</p>
+          </div>
+
+          <div class="paso-card">
+            <div class="paso-numero">3</div>
+            <h3>Recibe.</h3>
+            <p>Llega a tu puerta una pieza cuidada, protegida y con el cariño de quien ama lo que construye con sus manos.</p>
+          </div>
+        </div>
+
+        <!-- Pasos Creadores (Oculto por defecto) -->
+        <div class="pasos-grid" id="bloquePasosCreadores" hidden>
+          <div class="paso-card">
+            <div class="paso-numero">1</div>
+            <h3>Publica.</h3>
+            <p>Muestra tus creaciones propias o postula tu taller para recibir pedidos bajo demanda en tu ciudad.</p>
+          </div>
+
+          <div class="paso-card">
+            <div class="paso-numero">2</div>
+            <h3>Crea.</h3>
+            <p>Pon a trabajar tus impresoras 3D con tarifas justas y transparentes por hora de máquina y gramo.</p>
+          </div>
+
+          <div class="paso-card">
+            <div class="paso-numero">3</div>
+            <h3>Vende.</h3>
+            <p>Genera ingresos constantes haciendo lo que te apasiona y haz crecer tu taller sin intermediarios opacos.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. COTIZADOR 3D AVANZADO (CALCULADORA TRANSPARENTE) -->
+    <section class="seccion-contenedor" id="cotizador">
+      <div class="cabecera-bloque">
+        <div>
+          <h2>Cotizador 3D a Medida</h2>
+          <p>¿Tienes un modelo 3D o archivo STL? Calcula tiempos, materiales y presupuestos con total transparencia.</p>
+        </div>
+      </div>
+
+      <div class="cotizador-layout">
+        <!-- Columna 1: Parámetros -->
+        <div class="tarjeta-cotizador">
+          <h2>1. Parámetros de la Pieza</h2>
+
+          <label for="vendedor">Taller o Creador Asignado</label>
+          <select id="vendedor"></select>
+
+          <label>Plantillas Rápidas para Probar</label>
+          <div class="plantillas-grid">
+            <button type="button" class="btn-plantilla" data-h="4" data-m="0" data-g="85" data-n="Soporte Audífonos">
+              <strong>Audífonos</strong>
+              <span>4h · 85g</span>
+            </button>
+            <button type="button" class="btn-plantilla" data-h="2" data-m="30" data-g="45" data-n="Carcasa Raspberry">
+              <strong>Carcasa</strong>
+              <span>2.5h · 45g</span>
+            </button>
+            <button type="button" class="btn-plantilla" data-h="1" data-m="15" data-g="20" data-n="Miniatura 28mm">
+              <strong>Miniatura</strong>
+              <span>1.2h · 20g</span>
+            </button>
+            <button type="button" class="btn-plantilla" data-h="6" data-m="0" data-g="130" data-n="Pieza Mecánica">
+              <strong>Mecánica</strong>
+              <span>6h · 130g</span>
+            </button>
+          </div>
+
+          <label for="nombrePieza">Nombre o Referencia del Proyecto</label>
+          <input id="nombrePieza" type="text" value="Prototipo 3D Personalizado" maxlength="60" placeholder="Ej. Lámpara de diseño / Carcasa prototipo">
+
+          <label for="material">Material de Impresión</label>
+          <select id="material"></select>
+
+          <div class="fila-2">
+            <div>
+              <label for="horas">Horas de Máquina</label>
+              <input id="horas" type="number" min="0" step="1" value="3">
+            </div>
+            <div>
+              <label for="minutos">Minutos</label>
+              <input id="minutos" type="number" min="0" max="59" step="1" value="15">
+            </div>
+          </div>
+
+          <div class="fila-2">
+            <div>
+              <label for="gramos">Peso Neto (g)</label>
+              <input id="gramos" type="number" min="1" step="1" value="70">
+            </div>
+            <div>
+              <label for="cantidad">Cantidad (unidades)</label>
+              <input id="cantidad" type="number" min="1" max="1000" step="1" value="1">
+            </div>
+          </div>
+
+          <label for="infillRelleno">Relleno Interno (Infill): <span id="infillTexto" style="color:var(--secundario); font-weight:700;">20% (Estándar recomendado)</span></label>
+          <input type="range" id="infillRelleno" min="5" max="100" value="20" step="5" style="margin-top:0.4rem;">
+        </div>
+
+        <!-- Columna 2: Resumen, Gráfico de Pastel y Acciones -->
+        <div class="tarjeta-cotizador">
+          <h2>2. Desglose del Presupuesto</h2>
+
+          <!-- Desglose de costos -->
+          <div>
+            <div class="linea-desglose">
+              <span>Tiempo de Impresora:</span>
+              <strong id="costoTiempo" class="mono">$ 0</strong>
+            </div>
+            <div class="linea-desglose">
+              <span>Filamento / Resina:</span>
+              <strong id="costoMaterial" class="mono">$ 0</strong>
+            </div>
+            <div class="linea-desglose">
+              <span>Margen y Acabado del Taller:</span>
+              <strong id="costoMargen" class="mono">$ 0</strong>
+            </div>
+            <div class="linea-desglose" id="filaDescuento" hidden style="color:var(--exito);">
+              <span>Descuento por Volumen:</span>
+              <strong id="costoDescuento" class="mono">- $ 0</strong>
+            </div>
+          </div>
+
+          <!-- Total destacado -->
+          <div class="total-caja">
+            <div class="total-valor" id="total">$ 0</div>
+            <div class="total-etiqueta">Total estimado en pesos colombianos (COP)</div>
+          </div>
+
+          <!-- Gráfico de pastel integrado -->
+          <div class="contenedor-grafico-pie" id="contenedorGraficoPie">
+            <!-- Renderizado dinámicamente por app.js -->
+          </div>
+
+          <!-- Acciones de Cotización -->
+          <div style="display:flex; flex-direction:column; gap:0.75rem; margin-top:1.25rem;">
+            <button type="button" class="btn" id="btnGuardarCotizacion">
+              💾 Guardar Cotización en PHP
+            </button>
+            
+            <div class="fila-2">
+              <button type="button" class="btn secundario" id="btnVerComprobante">
+                📄 Ver Comprobante / Ticket
+              </button>
+              <button type="button" class="btn secundario" id="btnWhatsAppDirecto">
+                📱 Cotizar por WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. MANIFIESTO DE COMUNIDAD Y FABRICACIÓN LOCAL -->
+    <section class="seccion-contenedor">
+      <div class="manifiesto-caja">
+        <img src="/assets/aistudio/Emblema_geom_trico_de_abeja_hexagonal__1__ab80ee55.png" alt="Emblema PrintAnts" class="manifiesto-emblema-img">
+        <div style="font-size:0.85rem; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:var(--primario-hover); margin-bottom:0.5rem;">Comunidad & Artesanía Digital</div>
+        <h2>Hecho en 3D. Hecho por personas.</h2>
+        <p>
+          En PrintAnts creemos que el futuro de los objetos no está en fábricas lejanas que producen millones de cosas idénticas. 
+          Está en talleres cercanos que fabrican bajo demanda exactamente lo que necesitas, con materiales biodegradables o reciclables y un trato humano.
+        </p>
+
+        <div class="manifiesto-metricas">
+          <div class="manifiesto-metrica">
+            <strong id="statMetricaCreadores">4 Talleres</strong>
+            <span>Ciudades de Colombia</span>
+          </div>
+          <div class="manifiesto-metrica">
+            <strong id="statMetricaPiezas">8 Creaciones</strong>
+            <span>Catálogo Activo</span>
+          </div>
+          <div class="manifiesto-metrica">
+            <strong>100% Bajo Demanda</strong>
+            <span>Cero inventario tirado</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==============================================================
+       FOOTER CON ALMA Y CERCANÍA
+       ============================================================== -->
+  <footer class="app-footer">
+    <div class="footer-grid">
+      <div class="footer-bio">
+        <a href="#inicio" class="marca" style="margin-bottom:0.75rem;">
+          <img src="/assets/aistudio/Emblema_geom_trico_de_abeja_hexagonal__1__ab80ee55.png" alt="PrintAnts" class="marca-emblema-img" id="logoFooter" data-identidad="emblema" style="height:36px; width:36px;">
+          <div class="marca-texto">
+            <div class="marca-titulo">Print<span>Ants</span></div>
+            <div class="marca-sub">Marketplace 3D</div>
+          </div>
+        </a>
+        <p>
+          El marketplace que conecta a makers con personas que valoran los objetos hechos a medida con tecnología y dedicación humana.
+        </p>
+      </div>
+
+      <div class="footer-col">
+        <h4>Explorar</h4>
+        <ul>
+          <li><a href="#explorar">Creaciones de autor</a></li>
+          <li><a href="#categorias">Hogar y Decoración</a></li>
+          <li><a href="#categorias">Gadgets ergonómicos</a></li>
+          <li><a href="#categorias">Miniaturas y Rol</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Creadores</h4>
+        <ul>
+          <li><a href="#vendedores">Directorio de talleres</a></li>
+          <li><a href="#cotizador">Calculadora de corte</a></li>
+          <li><a href="#" id="linkFooterQuieroVender">Unir mi taller</a></li>
+          <li><a href="#como-funciona">Guía para makers</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Comunidad</h4>
+        <ul>
+          <li><a href="#inicio">Bogotá · Medellín · Cali</a></li>
+          <li><a href="#inicio">Bucaramanga · Barranquilla</a></li>
+          <li><a href="#inicio">Garantía PrintAnts</a></li>
+          <li><a href="#inicio">Contacto directo</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-barra-inferior">
+      <div>© 2026 PrintAnts · Marketplace de Impresión 3D en Colombia. Hecho con orgullo por makers independientes.</div>
+      <div style="display:flex; gap:1rem;">
+        <span>Fabricación Local</span>
+        <span>•</span>
+        <span>Materiales Eco</span>
+        <span>•</span>
+        <span>Trato Directo</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==============================================================
+       MODAL: DETALLE DE PRODUCTO Y ENCARGO
+       ============================================================== -->
+  <div class="modal-overlay oculto" id="modalDetalleProducto" hidden style="display:none;">
+    <div class="modal-contenido" role="dialog" aria-modal="true" aria-labelledby="modalProdTitulo">
+      <button type="button" class="modal-btn-cerrar" id="btnCerrarModalProd" aria-label="Cerrar detalle">✕</button>
+      
+      <div id="contenidoModalProducto">
+        <!-- Renderizado dinámicamente -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================================
+       MODAL: COMPROBANTE OFICIAL / TICKET DE COTIZACIÓN
+       ============================================================== -->
+  <div class="modal-overlay oculto" id="modalComprobante" hidden style="display:none;">
+    <div class="modal-contenido" role="dialog" aria-modal="true" aria-labelledby="ticketId">
+      <button type="button" class="modal-btn-cerrar" id="btnCerrarModalTicket" aria-label="Cerrar ticket">✕</button>
+      
+      <div class="comprobante-ticket" id="ticketImprimible">
+        <div class="ticket-header">
+          <img src="/assets/aistudio/Emblema_geom_trico_de_abeja_hexagonal__1__ab80ee55.png" alt="PrintAnts" class="ticket-emblema-img" id="logoTicket" data-identidad="emblema">
+          <h2>PRESUPUESTO OFICIAL · PRINTANTS</h2>
+          <div class="ticket-id" id="ticketId">COT-2026-001</div>
+          <div class="suave" id="ticketFecha" style="font-size:0.8rem; color:var(--texto-secundario); margin-top:0.25rem;">Fecha: 2026-10-22</div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; margin-bottom:1rem; font-size:0.88rem;">
+          <div>
+            <span style="font-size:0.75rem; text-transform:uppercase; color:var(--texto-secundario);">CLIENTE:</span>
+            <div id="ticketCliente" style="font-weight:700;">Cliente Web</div>
+          </div>
+          <div style="text-align:right;">
+            <span style="font-size:0.75rem; text-transform:uppercase; color:var(--texto-secundario);">TALLER:</span>
+            <div id="ticketTaller" style="font-weight:700;">Pedro Impresiones 3D</div>
+          </div>
+        </div>
+
+        <table class="ticket-tabla">
+          <tr>
+            <td>Pieza / Referencia</td>
+            <td id="ticketPieza" style="text-align:right; font-weight:700;">Prototipo 3D</td>
+          </tr>
+          <tr>
+            <td>Material</td>
+            <td id="ticketMaterial" style="text-align:right; font-weight:700;">PLA</td>
+          </tr>
+          <tr>
+            <td>Tiempo estimado</td>
+            <td id="ticketTiempo" style="text-align:right;">3h 15m</td>
+          </tr>
+          <tr>
+            <td>Peso neto estimado</td>
+            <td id="ticketPeso" style="text-align:right;">70 g</td>
+          </tr>
+          <tr>
+            <td>Cantidad</td>
+            <td id="ticketCantidad" style="text-align:right;">1 ud</td>
+          </tr>
+          <tr>
+            <td>Tiempo de máquina</td>
+            <td id="ticketCostoTiempo" style="text-align:right;" class="mono">$ 0</td>
+          </tr>
+          <tr>
+            <td>Material filamento/resina</td>
+            <td id="ticketCostoMaterial" style="text-align:right;" class="mono">$ 0</td>
+          </tr>
+          <tr>
+            <td>Margen y acabado</td>
+            <td id="ticketCostoMargen" style="text-align:right;" class="mono">$ 0</td>
+          </tr>
+        </table>
+
+        <div class="ticket-total">
+          <span style="font-size:0.9rem; color:var(--texto-secundario); font-weight:normal;">TOTAL: </span>
+          <span id="ticketTotal">$ 0 COP</span>
+        </div>
+
+        <div class="ticket-footer">
+          <p>Documento informativo generado mediante la comunidad PrintAnts 3D.</p>
+          <p>Validez del presupuesto: 15 días calendario.</p>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:0.75rem;" class="modal-acciones">
+        <button type="button" class="btn" id="btnImprimirTicket" style="flex:1;">🖨️ Imprimir / Guardar PDF</button>
+        <button type="button" class="btn secundario" id="btnCerrarModalTicketAbajo">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================================
+       MODAL: REGISTRO / "QUIERO VENDER"
+       ============================================================== -->
+  <div class="modal-overlay oculto" id="modalQuieroVender" hidden style="display:none;">
+    <div class="modal-contenido" role="dialog" aria-modal="true" aria-labelledby="tituloQuieroVender">
+      <button type="button" class="modal-btn-cerrar" id="btnCerrarModalVender" aria-label="Cerrar">✕</button>
+
+      <div style="text-align:center; margin-bottom:1.5rem;">
+        <img src="emblema oscuro.png" alt="PrintAnts" class="modal-emblema-img" id="logoModalVender" data-identidad="emblema" style="height:56px; width:56px; margin:0 auto 0.75rem; object-fit:contain;">
+        <h2 id="tituloQuieroVender" style="font-size:1.4rem; font-weight:800; color:var(--texto);">Únete a la Colonia de Creadores</h2>
+        <p style="color:var(--texto-secundario); font-size:0.9rem; max-width:440px; margin:0.35rem auto 0;">
+          Publica tus creaciones o recibe encargos de personas y empresas de tu ciudad.
+        </p>
+      </div>
+
+      <form id="formRegistroTaller" onsubmit="return false;">
+        <label for="regTallerNombre">Nombre de tu Taller o Marca</label>
+        <input id="regTallerNombre" placeholder="Ej. Roble 3D Studio" required>
+
+        <label for="regTallerCreador">Tu Nombre Completo</label>
+        <input id="regTallerCreador" placeholder="Ej. Camila Morales" required>
+
+        <div class="fila-2">
+          <div>
+            <label for="regTallerCiudad">Ciudad en Colombia</label>
+            <input id="regTallerCiudad" placeholder="Ej. Medellín" required>
+          </div>
+          <div>
+            <label for="regTallerTel">WhatsApp de Contacto</label>
+            <input id="regTallerTel" type="tel" placeholder="Ej. 573123456789" required>
+          </div>
+        </div>
+
+        <label for="regTallerMaquinas">¿Qué máquinas de impresión 3D tienes?</label>
+        <input id="regTallerMaquinas" placeholder="Ej. Bambu Lab P1S, Creality K1, Elegoo Saturn 3">
+
+        <label for="regTallerBio">Cuéntanos sobre tu especialidad</label>
+        <textarea id="regTallerBio" rows="3" placeholder="Ej. Me apasiona el diseño de iluminación y piezas funcionales con filamentos eco-friendly."></textarea>
+
+        <button type="submit" class="btn" id="btnEnviarRegistroTaller" style="width:100%; margin-top:1.5rem;">
+          ✨ Registrar mi Taller en PrintAnts
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==============================================================
+       MODAL: CUENTA / INICIAR SESIÓN
+       ============================================================== -->
+  <div class="modal-overlay oculto" id="modalCuenta" hidden style="display:none;">
+    <div class="modal-contenido" role="dialog" aria-modal="true" aria-labelledby="tituloModalCuenta">
+      <button type="button" class="modal-btn-cerrar" id="btnCerrarModalCuenta" aria-label="Cerrar">✕</button>
+
+      <div style="text-align:center; margin-bottom:1.5rem;">
+        <img src="emblema oscuro.png" alt="PrintAnts" class="modal-emblema-img" id="logoModalCuenta" data-identidad="emblema" style="height:52px; width:52px; margin:0 auto 0.5rem; object-fit:contain;">
+        <h2 id="tituloModalCuenta" style="font-size:1.35rem; font-weight:800; color:var(--texto);">Tu Cuenta en PrintAnts</h2>
+        <p style="color:var(--texto-secundario); font-size:0.88rem;">Guarda tus piezas favoritas y haz seguimiento a tus presupuestos.</p>
+      </div>
+
+      <div id="contenidoEstadoSesion">
+        <!-- Renderizado dinámicamente -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenedor de Toast Flotante -->
+  <div id="toastContenedor" aria-live="polite"></div>
+
+  <!-- Script Principal de la Aplicación -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
