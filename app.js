@@ -1,25 +1,13 @@
 /**
  * =====================================================================
- * COTIZADOR 3D PRO - LÓGICA PRINCIPAL DEL CLIENTE
+ * PRINTANTS · MARKETPLACE 3D & COMUNIDAD DE CREADORES
  * Archivo: app.js
- * 
- * Secciones:
- * 1. Utilidades y Notificaciones Toast
- * 2. Capa de Comunicación con el Backend PHP (guardar.php)
- * 3. Gestión de Estado, Sesión y Menú de Navegación
- * 4. Controladores de Vistas:
- *    - Inicio (Hero y Métricas)
- *    - Directorio de Vendedores y Filtros
- *    - Cotizador 3D Avanzado (Cálculo, Gráfica, Chat y WhatsApp)
- *    - Historial de Cotizaciones Guardadas
- *    - Panel de Taller (Configuración de Tarifas y Materiales)
- *    - Mi Cuenta y Autenticación
  * =====================================================================
  */
 
-/* =====================================================================
-   1. UTILIDADES Y NOTIFICACIONES
-   ===================================================================== */
+/* -------------------------------------------------------------
+   1. UTILIDADES Y FORMATO
+   ------------------------------------------------------------- */
 const $ = id => document.getElementById(id);
 const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -32,96 +20,336 @@ const num = v => {
 };
 const leer = id => $(id) ? num($(id).value) : 0;
 
-// Sistema de Notificaciones Toast flotantes
+// Sistema Toast Flotante Amigable
 function mostrarToast(mensaje, tipo = 'info') {
   const cont = $('toastContenedor');
   if (!cont) return;
   const t = document.createElement('div');
   t.className = `toast ${tipo}`;
-  const iconos = { exito: '✅', error: '⚠️', info: 'ℹ️' };
+  const iconos = { exito: '✨', error: '⚠️', info: '🐝' };
   t.innerHTML = `<span>${iconos[tipo] || '•'}</span><span>${esc(mensaje)}</span>`;
   cont.appendChild(t);
   setTimeout(() => {
     t.style.opacity = '0';
-    t.style.transform = 'translateY(10px)';
+    t.style.transform = 'translateY(15px)';
     setTimeout(() => t.remove(), 250);
   }, 3200);
 }
 
-// Mensaje auxiliar en un contenedor específico
-function aviso(id, texto, ok = true) {
-  const el = $(id);
-  if (!el) return;
-  el.textContent = texto;
-  el.className = 'aviso ' + (ok ? 'ok' : 'error');
-  el.style.color = ok ? 'var(--exito)' : 'var(--peligro)';
+/* -------------------------------------------------------------
+   SISTEMA DE TEMA CLARO / OSCURO & IDENTIDAD VISUAL (LOGOS & EMBLEMAS)
+   ------------------------------------------------------------- */
+const RUTAS_IDENTIDAD = {
+  claro: {
+    emblema: 'emblema oscuro.png',
+    logo: 'logo.png'
+  },
+  oscuro: {
+    emblema: 'emblema.png',
+    logo: 'logo claor.png'
+  }
+};
+
+function actualizarIdentidadVisual(tema) {
+  const t = tema === 'oscuro' ? 'oscuro' : 'claro';
+  const rutas = RUTAS_IDENTIDAD[t];
+
+  // 1. Actualizar todos los emblemas en Header, Footer, Modales y Ticket
+  const emblemas = document.querySelectorAll('.marca-emblema-img, .ticket-emblema-img, .modal-emblema-img, [data-identidad="emblema"]');
+  emblemas.forEach(img => {
+    if (img && img.getAttribute('src') !== rutas.emblema) {
+      img.src = rutas.emblema;
+    }
+  });
+
+  // 2. Actualizar logos completos (si los hay)
+  const logos = document.querySelectorAll('.marca-logo-img, [data-identidad="logo"]');
+  logos.forEach(img => {
+    if (img && img.getAttribute('src') !== rutas.logo) {
+      img.src = rutas.logo;
+    }
+  });
+
+  // 3. Actualizar Favicon en el head del documento
+  const fav = $('faviconLink') || document.querySelector('link[rel="icon"]');
+  if (fav && fav.getAttribute('href') !== rutas.emblema) {
+    fav.href = rutas.emblema;
+  }
 }
 
-/* =====================================================================
-   2. CAPA DE SINCRONIZACIÓN CON EL BACKEND PHP (guardar.php)
-   ===================================================================== */
-const KEY_LOCAL = 'cotizador3d_pro_cache';
+function inicializarTema() {
+  const temaGuardado = localStorage.getItem('printants_tema') || 'claro';
+  aplicarTema(temaGuardado);
+
+  const btnTema = $('btnCambiarTema');
+  if (btnTema) {
+    btnTema.onclick = () => {
+      const temaActual = document.documentElement.getAttribute('data-tema') === 'oscuro' ? 'oscuro' : 'claro';
+      const nuevoTema = temaActual === 'claro' ? 'oscuro' : 'claro';
+      aplicarTema(nuevoTema);
+      mostrarToast(nuevoTema === 'oscuro' ? 'Modo oscuro activado 🌙' : 'Modo claro activado ☀️', 'info');
+    };
+  }
+}
+
+function aplicarTema(tema) {
+  const t = tema === 'oscuro' ? 'oscuro' : 'claro';
+  document.documentElement.setAttribute('data-tema', t);
+  localStorage.setItem('printants_tema', t);
+
+  // Actualizar inmediatamente todos los emblemas y logos según el tema
+  actualizarIdentidadVisual(t);
+
+  const icono = $('iconoTema');
+  const texto = $('textoTema');
+  const btnTema = $('btnCambiarTema');
+
+  if (t === 'oscuro') {
+    if (icono) icono.textContent = '🌙';
+    if (texto) texto.textContent = 'Modo oscuro';
+    if (btnTema) btnTema.title = 'Modo actual: Oscuro. Clic para cambiar a Modo Claro';
+  } else {
+    if (icono) icono.textContent = '☀️';
+    if (texto) texto.textContent = 'Modo claro';
+    if (btnTema) btnTema.title = 'Modo actual: Claro. Clic para cambiar a Modo Oscuro';
+  }
+
+  // Si existe el cotizador, recalcular para refrescar colores del gráfico
+  if (typeof calcularCotizacion === 'function') {
+    calcularCotizacion();
+  }
+}
+
+/* -------------------------------------------------------------
+   2. ESTADO Y SINCRONIZACIÓN CON BACKEND PHP (guardar.php)
+   ------------------------------------------------------------- */
+const KEY_LOCAL = 'printants_marketplace_cache';
 const URL_PHP = '/guardar.php';
 
-// Base de datos en memoria y caché local
+// Estado Semilla Inicial (Humano y Local)
 let BD = {
-  usuarios: {},
-  perfiles: {},
   vendedores: {
     pedro: {
       id: 'pedro',
-      nombre: 'Pedro Impresiones',
-      nota: 'Especialista en piezas técnicas y prototipado rápido en Bogotá',
+      nombre: 'Pedro Impresiones 3D',
+      creador: 'Pedro Gaviria',
+      handle: '@PedroGaviria3D',
+      avatar: '🧔‍♂️',
+      nota: 'Ingeniero mecánico apasionado por la precisión dimensional, prototipos funcionales y tolerancias exactas.',
+      maquinas: 'Bambu Lab X1-Carbon, Prusa MK4',
       hora: 2500,
       margen: 15,
       tel: '573001234567',
       ciudad: 'Bogotá',
-      insignia: 'Taller Verificado',
+      insignia: 'Taller Verificado · 4 años en comunidad',
       mat: { PLA: 65000, PETG: 78000, ABS: 82000, TPU: 115000, Resina: 130000 }
-    },
-    enrique: {
-      id: 'enrique',
-      nombre: 'Enrique 3D Studio',
-      nota: 'El mejor precio en materiales estándar y figuras decorativas',
-      hora: 3800,
-      margen: 20,
-      tel: '573109876543',
-      ciudad: 'Medellín',
-      insignia: 'Top Ventas',
-      mat: { PLA: 55000, PETG: 65000, ABS: 70000, TPU: 95000, Nylon: 140000 }
     },
     laura: {
       id: 'laura',
       nombre: 'Laura Print Lab',
-      nota: 'Acabados finos de alta precisión y resina de ingeniería',
+      creador: 'Laura Restrepo',
+      handle: '@LauraPrintLab',
+      avatar: '👩‍🎨',
+      nota: 'Diseñadora industrial especializada en iluminación cálida, jarrones biomiméticos y resinas artísticas.',
+      maquinas: 'Elegoo Saturn 3 Ultra, Bambu P1S',
       hora: 3200,
       margen: 18,
       tel: '573155554433',
       ciudad: 'Cali',
-      insignia: 'Precisión Alta',
+      insignia: 'Creadora Destacada · Acabados a Mano',
       mat: { PLA: 60000, PETG: 72000, Resina: 120000, TPU: 105000 }
-    }
-  },
-  resenas: {
-    pedro: {
-      votos: { u_demo1: 5, u_demo2: 4 },
-      comentarios: [{ autor: 'Carlos M.', estrellas: 5, texto: 'Excelente acabado y entrega rápida.', fecha: '2026-10-15' }]
     },
     enrique: {
-      votos: { u_demo1: 5, u_demo3: 5 },
-      comentarios: [{ autor: 'Valeria S.', estrellas: 5, texto: 'Precios inmejorables en PETG.', fecha: '2026-10-18' }]
+      id: 'enrique',
+      nombre: 'Enrique 3D Studio',
+      creador: 'Mateo & Enrique',
+      handle: '@EnriqueMedellin',
+      avatar: '👨‍💻',
+      nota: 'Dúo de creadores en Medellín. Especialistas en miniaturas de rol, escenografía fantástica y series en PETG.',
+      maquinas: 'Creality K1 Max, Formlabs Form 3',
+      hora: 3800,
+      margen: 20,
+      tel: '573109876543',
+      ciudad: 'Medellín',
+      insignia: 'Top Ventas · Envíos Express',
+      mat: { PLA: 55000, PETG: 65000, ABS: 70000, TPU: 95000, Nylon: 140000 }
     },
-    laura: {
-      votos: { u_demo2: 5 },
-      comentarios: [{ autor: 'David R.', estrellas: 5, texto: 'Gran detalle en impresiones de resina.', fecha: '2026-10-20' }]
+    sofia: {
+      id: 'sofia',
+      nombre: 'Taller Silvestre 3D',
+      creador: 'Sofía Cárdenas',
+      handle: '@TallerSilvestre',
+      avatar: '🌱',
+      nota: 'Objetos para el hogar impresos con filamentos ecológicos de caña de azúcar y madera reciclada.',
+      maquinas: 'Prusa Mini+, Voron 2.4',
+      hora: 2900,
+      margen: 15,
+      tel: '573204448899',
+      ciudad: 'Bucaramanga',
+      insignia: 'Eco-Maker · Bio-materiales',
+      mat: { PLA: 58000, PETG: 68000, 'Madera-PLA': 92000, TPU: 98000 }
     }
   },
+  productos: [
+    {
+      id: 'prod-1',
+      nombre: 'Lámpara Colmena Voronoi',
+      categoria: 'decoracion',
+      categoria_nombre: 'Hogar & Decoración',
+      precio: 78000,
+      creador_id: 'laura',
+      creador_nombre: 'Laura Restrepo',
+      ciudad: 'Cali',
+      material: 'PLA Mate Ámbar Cálido',
+      tiempo_entrega: '2 a 3 días hábiles',
+      dimensiones: '18 x 18 x 22 cm',
+      rating: 4.9,
+      resenas_count: 28,
+      descripcion: 'Lámpara de sobremesa con patrón celular inspirado en colmenas naturales. Proyecta un ambiente cálido y relajante con bombillos LED estándar E27.',
+      icono: '🏮',
+      color_muestra: '#D97706',
+      etiqueta: 'Favorito de la Colonia'
+    },
+    {
+      id: 'prod-2',
+      nombre: 'Soporte Ergonómico para Audífonos',
+      categoria: 'gadgets',
+      categoria_nombre: 'Gadgets & Oficina',
+      precio: 54000,
+      creador_id: 'pedro',
+      creador_nombre: 'Pedro Gaviria',
+      ciudad: 'Bogotá',
+      material: 'PETG Negro Carbón',
+      tiempo_entrega: '1 a 2 días hábiles',
+      dimensiones: '12 x 14 x 26 cm',
+      rating: 4.8,
+      resenas_count: 42,
+      descripcion: 'Base pesada y curva anatómica que protege la diadema de tus auriculares sin deformar las almohadillas. Incluye pies antideslizantes de silicona.',
+      icono: '🎧',
+      color_muestra: '#334155',
+      etiqueta: 'Robusto'
+    },
+    {
+      id: 'prod-3',
+      nombre: 'Maceta Modular "AntHill" Auto-Riego',
+      categoria: 'decoracion',
+      categoria_nombre: 'Hogar & Decoración',
+      precio: 42000,
+      creador_id: 'sofia',
+      creador_nombre: 'Sofía Cárdenas',
+      ciudad: 'Bucaramanga',
+      material: 'PLA Bio-Filamento Terracota',
+      tiempo_entrega: '2 días hábiles',
+      dimensiones: '13 x 13 x 15 cm',
+      rating: 5.0,
+      resenas_count: 19,
+      descripcion: 'Sistema de hidratación por mecha de algodón para plantas de interior y suculentas. Riega una vez cada 10 días sin preocupaciones.',
+      icono: '🪴',
+      color_muestra: '#B45309',
+      etiqueta: 'Sostenible'
+    },
+    {
+      id: 'prod-4',
+      nombre: 'Torre de Dados del Dragón',
+      categoria: 'juegos',
+      categoria_nombre: 'Miniaturas & Rol',
+      precio: 69000,
+      creador_id: 'enrique',
+      creador_nombre: 'Mateo & Enrique',
+      ciudad: 'Medellín',
+      material: 'Resina UV Alta Definición',
+      tiempo_entrega: '2 a 4 días hábiles',
+      dimensiones: '15 x 16 x 20 cm',
+      rating: 4.9,
+      resenas_count: 35,
+      descripcion: 'Diseñada para partidas de rol. Los dados ruedan a través de una escalera en espiral interna y salen a la bandeja esculpida con escamas.',
+      icono: '🐉',
+      color_muestra: '#7C2D12',
+      etiqueta: 'Edición Rol'
+    },
+    {
+      id: 'prod-5',
+      nombre: 'Organizador de Cables Magnético',
+      categoria: 'gadgets',
+      categoria_nombre: 'Gadgets & Oficina',
+      precio: 32000,
+      creador_id: 'pedro',
+      creador_nombre: 'Pedro Gaviria',
+      ciudad: 'Bogotá',
+      material: 'TPU Flexible Premium',
+      tiempo_entrega: '1 día hábil',
+      dimensiones: 'Pack x 4 módulos',
+      rating: 4.7,
+      resenas_count: 16,
+      descripcion: 'Se adhiere con imanes discretos al borde de cualquier mesa. Sostiene cables USB-C, Lightning y HDMI sin resbalarse ni rallar madera.',
+      icono: '⚡',
+      color_muestra: '#475569',
+      etiqueta: 'Práctico'
+    },
+    {
+      id: 'prod-6',
+      nombre: 'Jarrón Escultural "Duna"',
+      categoria: 'decoracion',
+      categoria_nombre: 'Hogar & Decoración',
+      precio: 65000,
+      creador_id: 'laura',
+      creador_nombre: 'Laura Restrepo',
+      ciudad: 'Cali',
+      material: 'PLA Mate Marfil Seda',
+      tiempo_entrega: '2 días hábiles',
+      dimensiones: '14 x 14 x 24 cm',
+      rating: 5.0,
+      resenas_count: 14,
+      descripcion: 'Geometría suave y orgánica impresa en una sola pieza continua. Tratado internamente para ramas secas o flores frescas.',
+      icono: '🏺',
+      color_muestra: '#D97706',
+      etiqueta: 'Diseño'
+    },
+    {
+      id: 'prod-7',
+      nombre: 'Miniatura Caballero Mech Titán 75mm',
+      categoria: 'juegos',
+      categoria_nombre: 'Miniaturas & Rol',
+      precio: 48000,
+      creador_id: 'enrique',
+      creador_nombre: 'Mateo & Enrique',
+      ciudad: 'Medellín',
+      material: 'Resina Gris Ultra-Curada',
+      tiempo_entrega: '2 a 3 días hábiles',
+      dimensiones: 'Escala 75mm con peana',
+      rating: 4.9,
+      resenas_count: 23,
+      descripcion: 'Impresión milimétrica a 0.02mm sin capas perceptibles, curada bajo UV con soporte lavado. Lista para pintura artística.',
+      icono: '⚔️',
+      color_muestra: '#64748B',
+      etiqueta: 'Colección'
+    },
+    {
+      id: 'prod-8',
+      nombre: 'Pomo Ergonómico Industrial M8',
+      categoria: 'repuestos',
+      categoria_nombre: 'Repuestos & Taller',
+      precio: 36000,
+      creador_id: 'pedro',
+      creador_nombre: 'Pedro Gaviria',
+      ciudad: 'Bogotá',
+      material: 'Nylon con Fibra de Carbono',
+      tiempo_entrega: '1 a 2 días hábiles',
+      dimensiones: 'Rosca metálica M8 insertada',
+      rating: 5.0,
+      resenas_count: 11,
+      descripcion: 'Resistencia industrial a torsión y temperatura (hasta 110°C). Perfecto para herramientas, trípodes o maquinaria de taller.',
+      icono: '🔧',
+      color_muestra: '#1E293B',
+      etiqueta: 'Ingeniería'
+    }
+  ],
+  favoritos: {}, // { 'prod-1': true }
   cotizaciones: [],
-  mensajes: {},
   sesion: null
 };
 
-// Cargar caché local previo para rapidez instantánea
+// Cargar caché local
 try {
   const guardado = localStorage.getItem(KEY_LOCAL);
   if (guardado) {
@@ -129,1302 +357,977 @@ try {
     BD = Object.assign(BD, parseado);
   }
 } catch (e) {
-  console.warn('No se pudo leer localStorage', e);
+  console.warn('Caché no disponible:', e);
 }
 
 function guardarCacheLocal() {
   try {
     localStorage.setItem(KEY_LOCAL, JSON.stringify(BD));
   } catch (e) {
-    console.warn('Error al guardar caché local', e);
+    console.warn('Error al guardar caché:', e);
   }
 }
 
-// Cliente API para invocar acciones en guardar.php
-async function peticionPHP(accion, datos = {}) {
-  const payload = Object.assign({ accion }, datos);
+// Sincronización con backend PHP
+async function sincronizarConPHP() {
   try {
     const res = await fetch(URL_PHP, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(payload)
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accion: 'obtener_todo' })
     });
     const json = await res.json();
-    return json;
+    if (json && json.ok && json.datos) {
+      if (json.datos.vendedores) BD.vendedores = json.datos.vendedores;
+      if (json.datos.productos && json.datos.productos.length) BD.productos = json.datos.productos;
+      if (json.datos.cotizaciones) BD.cotizaciones = json.datos.cotizaciones;
+      guardarCacheLocal();
+      actualizarContadorFavoritos();
+      renderizarProductos();
+      renderizarCreadores();
+    }
   } catch (err) {
-    console.info('Modo sin conexión o backend PHP no disponible en este puerto; usando almacenamiento local.', err);
-    return null;
+    console.info('Backend PHP disponible en servidor.', err);
   }
 }
 
-// Sincronizar estado completo al iniciar
-async function sincronizarConPHP() {
-  const respuesta = await peticionPHP('obtener_todo');
-  const indicador = $('estadoPhp');
-  if (respuesta && respuesta.ok && respuesta.datos) {
-    if (respuesta.datos.vendedores) BD.vendedores = respuesta.datos.vendedores;
-    if (respuesta.datos.resenas) BD.resenas = respuesta.datos.resenas;
-    if (respuesta.datos.cotizaciones) BD.cotizaciones = respuesta.datos.cotizaciones;
-    if (respuesta.datos.perfiles) BD.perfiles = respuesta.datos.perfiles;
-    guardarCacheLocal();
-    if (indicador) {
-      indicador.innerHTML = '<span class="punto-estado"></span><span>PHP Sincronizado</span>';
-      indicador.title = 'Conectado exitosamente con guardar.php';
-    }
-  } else {
-    if (indicador) {
-      indicador.innerHTML = '<span class="punto-estado" style="background:#eab308; box-shadow:0 0 6px #eab308;"></span><span>Caché Local</span>';
-      indicador.title = 'guardar.php listo para producción; operando con almacenamiento local en el navegador';
-    }
-  }
-  actualizarMetricasInicio();
-}
-
-/* =====================================================================
-   3. GESTIÓN DE SESIÓN, USUARIOS Y MENÚ
-   ===================================================================== */
-async function cifrarClave(texto) {
-  if (window.crypto && crypto.subtle) {
-    const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
-    return Array.from(new Uint8Array(h), b => b.toString(16).padStart(2, '0')).join('');
-  }
-  return [...texto].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7).toString();
-}
-
-function obtenerUsuarioActual() {
-  if (!BD.sesion || !BD.usuarios[BD.sesion]) return null;
-  return BD.usuarios[BD.sesion];
-}
-
-function obtenerPerfilActual() {
-  const u = obtenerUsuarioActual();
-  if (!u) return null;
-  return BD.perfiles[u.id] || null;
-}
-
-function obtenerVendedorActual() {
-  const u = obtenerUsuarioActual();
-  if (!u) return null;
-  return BD.vendedores[u.id] || null;
-}
-
-function esUsuarioVendedor() {
-  return !!obtenerVendedorActual();
-}
-
-function obtenerSocialUsuario(userId) {
-  if (!BD.resenas[userId]) {
-    BD.resenas[userId] = { votos: {}, favoritos: {}, contactos: {} };
-  }
-  const r = BD.resenas[userId];
-  r.votos = r.votos || {};
-  r.favoritos = r.favoritos || {};
-  r.contactos = r.contactos || {};
-  return r;
-}
-
-// Calificación promedio calculada de un vendedor
-function obtenerRatingVendedor(clave) {
-  const votos = [];
-  for (const r of Object.values(BD.resenas)) {
-    if (r.votos && r.votos[clave]) {
-      votos.push(r.votos[clave]);
-    }
-  }
-  if (!votos.length) return { prom: 5.0, count: 0, texto: 'Nuevo (Sin reseñas)' };
-  const prom = votos.reduce((a, b) => a + b, 0) / votos.length;
-  const llenas = Math.round(prom);
-  const estrellas = '★'.repeat(llenas) + '☆'.repeat(5 - llenas);
-  return {
-    prom,
-    count: votos.length,
-    texto: `${estrellas} ${prom.toFixed(1)} (${votos.length} ${votos.length === 1 ? 'reseña' : 'reseñas'})`
-  };
-}
-
-// Router sencillo basado en Hash
-function obtenerRutaActiva() {
-  const [ruta, query] = location.hash.slice(1).split('?');
-  const paginasValidas = ['inicio', 'cotizador', 'vendedores', 'historial', 'taller', 'cuenta'];
-  return {
-    pagina: paginasValidas.includes(ruta) ? ruta : 'inicio',
-    query: query || ''
-  };
-}
-
-function construirMenu() {
-  const menuEl = $('menu');
-  if (!menuEl) return;
-  menuEl.innerHTML = '';
-
-  const { pagina } = obtenerRutaActiva();
-  const u = obtenerUsuarioActual();
-  const esVend = esUsuarioVendedor();
-
-  const enlaces = [
-    { id: 'inicio', href: '#inicio', texto: 'Inicio', visible: true },
-    { id: 'cotizador', href: '#cotizador', texto: 'Cotizador', visible: true },
-    { id: 'vendedores', href: '#vendedores', texto: 'Vendedores', visible: true },
-    { id: 'historial', href: '#historial', texto: 'Mis Cotizaciones', visible: true },
-    { id: 'taller', href: '#taller', texto: 'Mi Taller', visible: esVend },
-    { id: 'cuenta', href: '#cuenta', texto: u ? 'Mi Perfil' : 'Ingresar', visible: true }
-  ];
-
-  enlaces.filter(e => e.visible).forEach(e => {
-    const a = document.createElement('a');
-    a.href = e.href;
-    a.textContent = e.texto;
-    if (e.id === pagina) a.classList.add('activa');
-    menuEl.appendChild(a);
+/* -------------------------------------------------------------
+   3. GESTIÓN DE MODALES ROBUSTA Y ACCESIBLE
+   ------------------------------------------------------------- */
+function cerrarTodosLosModales() {
+  document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.hidden = true;
+    m.classList.remove('activo');
+    m.classList.add('oculto');
+    m.style.display = 'none';
   });
+  document.body.style.overflow = '';
 }
 
-// Inicialización de Tema Claro / Oscuro - PrintAnts
-function inicializarTema() {
-  const btn = $('btnTema');
-  const icono = $('iconoTema');
-  const favicon = $('faviconLink');
-  const guardado = localStorage.getItem('cotizador3d_tema') || 'oscuro';
+function abrirModal(modalId) {
+  cerrarTodosLosModales();
+  const modal = $(modalId);
+  if (!modal) return;
+  modal.hidden = false;
+  modal.classList.add('activo');
+  modal.classList.remove('oculto');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
 
-  const aplicar = esClaro => {
-    document.documentElement.classList.toggle('tema-claro', esClaro);
-    if (icono) icono.textContent = esClaro ? '☀️' : '🌙';
-    if (favicon) favicon.href = esClaro ? 'icon-dark.png' : 'icon-light.png';
-  };
-
-  aplicar(guardado === 'claro');
-
-  if (btn) {
-    btn.addEventListener('click', () => {
-      const esClaro = !document.documentElement.classList.contains('tema-claro');
-      aplicar(esClaro);
-      localStorage.setItem('cotizador3d_tema', esClaro ? 'claro' : 'oscuro');
-      mostrarToast(`PrintAnts: Modo ${esClaro ? 'claro' : 'oscuro'} activado`);
-    });
-  }
+  // Sincronizar emblemas de los modales con el tema activo
+  const temaActual = document.documentElement.getAttribute('data-tema') === 'oscuro' ? 'oscuro' : 'claro';
+  actualizarIdentidadVisual(temaActual);
 }
 
-function actualizarMetricasInicio() {
-  const statVend = $('statVendedores');
-  const statMat = $('statMateriales');
-  const statCot = $('statCotizaciones');
-
-  if (statVend) statVend.textContent = Object.keys(BD.vendedores).length;
-  if (statCot) statCot.textContent = BD.cotizaciones.length;
-
-  const matsUnicos = new Set();
-  Object.values(BD.vendedores).forEach(v => {
-    if (v.mat) Object.keys(v.mat).forEach(m => matsUnicos.add(m));
-  });
-  if (statMat) statMat.textContent = matsUnicos.size || 5;
-}
-
-/* =====================================================================
-   4. CONTROLADORES DE PÁGINAS Y VISTAS
-   ===================================================================== */
-const controladores = {
-
-  /* -------------------------------------------------------------
-     A. VENDEDORES: Directorio, búsqueda, filtros y favoritos
-     ------------------------------------------------------------- */
-  vendedores() {
-    const listaEl = $('lista');
-    const inputBuscar = $('buscarVendedor');
-    const selectMat = $('filtroMaterial');
-    const selectOrden = $('ordenarVendedores');
-    const u = obtenerUsuarioActual();
-    const social = u ? obtenerSocialUsuario(u.id) : { favoritos: {} };
-
-    const renderizar = () => {
-      const q = (inputBuscar ? inputBuscar.value : '').toLowerCase().trim();
-      const filtroMat = selectMat ? selectMat.value : 'todos';
-      const orden = selectOrden ? selectOrden.value : 'rating';
-
-      let items = Object.entries(BD.vendedores).map(([id, v]) => ({
-        id,
-        ...v,
-        ratingInfo: obtenerRatingVendedor(id),
-        esFavorito: !!(social.favoritos && social.favoritos[id]),
-        esMio: u && id === u.id
-      }));
-
-      // Filtro de búsqueda por nombre o ciudad
-      if (q) {
-        items = items.filter(v =>
-          v.nombre.toLowerCase().includes(q) ||
-          (v.ciudad && v.ciudad.toLowerCase().includes(q)) ||
-          (v.nota && v.nota.toLowerCase().includes(q))
-        );
-      }
-
-      // Filtro de material
-      if (filtroMat !== 'todos') {
-        items = items.filter(v => v.mat && v.mat[filtroMat] !== undefined);
-      }
-
-      // Ordenamiento
-      if (orden === 'rating') {
-        items.sort((a, b) => b.ratingInfo.prom - a.ratingInfo.prom);
-      } else if (orden === 'hora_asc') {
-        items.sort((a, b) => a.hora - b.hora);
-      } else if (orden === 'nombre') {
-        items.sort((a, b) => a.nombre.localeCompare(b.nombre));
-      }
-
-      if (!items.length) {
-        listaEl.innerHTML = `
-          <div class="tarjeta" style="grid-column: 1 / -1; text-align: center; padding: 36px 16px;">
-            <h3>No se encontraron talleres con esos criterios</h3>
-            <p class="suave">Prueba ajustando el término de búsqueda o cambiando el material seleccionado.</p>
-          </div>
-        `;
-        return;
-      }
-
-      listaEl.innerHTML = items.map(v => {
-        const matFilas = Object.entries(v.mat || {})
-          .map(([m, precio]) => `<tr><td>${esc(m)} / kg</td><td>${pesos(precio)}</td></tr>`)
-          .join('');
-
-        const telLimpio = String(v.tel || '').replace(/\D/g, '');
-        const waUrl = `https://wa.me/${telLimpio}?text=${encodeURIComponent(`Hola ${v.nombre}, vi tu taller en la red PrintAnts y me gustaría cotizar una impresión 3D.`)}`;
-
-        return `
-          <div class="tarjeta">
-            <div class="vendedor-cabecera">
-              <div class="vendedor-titulo">
-                <h2>
-                  ${esc(v.nombre)}
-                  ${v.esMio ? '<span class="etiqueta-tu">Tu Taller</span>' : ''}
-                  ${v.insignia ? `<span class="etiqueta-verificado">${esc(v.insignia)}</span>` : ''}
-                </h2>
-              </div>
-              <button type="button" class="btn-favorito ${v.esFavorito ? 'activo' : ''}" data-fav="${esc(v.id)}" title="${v.esFavorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}">
-                ${v.esFavorito ? '★' : '☆'}
-              </button>
-            </div>
-
-            <div class="meta-vendedor">
-              <span>📍 ${esc(v.ciudad || 'Colombia')}</span>
-              <span>·</span>
-              <span class="estrellas">${esc(v.ratingInfo.texto)}</span>
-            </div>
-
-            <p class="suave" style="font-size:0.9rem; min-height:42px;">${esc(v.nota || 'Taller de fabricación aditiva.')}</p>
-
-            <table class="tabla-precios">
-              <tr>
-                <td>Tarifa máquina por hora</td>
-                <td>${pesos(v.hora)}</td>
-              </tr>
-              <tr>
-                <td>Margen comercial</td>
-                <td>${v.margen}%</td>
-              </tr>
-              ${matFilas}
-            </table>
-
-            <div style="display:flex; flex-direction:column; gap:8px;">
-              <a class="btn" href="#cotizador?v=${encodeURIComponent(v.id)}">
-                ⚡ Cotizar con ${esc(v.nombre)}
-              </a>
-              <a class="btn claro sm" href="${waUrl}" target="_blank" rel="noopener">
-                📱 WhatsApp Directo
-              </a>
-            </div>
-          </div>
-        `;
-      }).join('');
-    };
-
-    // Eventos de búsqueda y filtros
-    if (inputBuscar) inputBuscar.addEventListener('input', renderizar);
-    if (selectMat) selectMat.addEventListener('change', renderizar);
-    if (selectOrden) selectOrden.addEventListener('change', renderizar);
-
-    // Evento de favoritos
-    listaEl.addEventListener('click', async e => {
-      const btn = e.target.closest('[data-fav]');
-      if (!btn) return;
-      const idVend = btn.dataset.fav;
-      if (!u) {
-        mostrarToast('Inicia sesión para guardar talleres en favoritos', 'info');
-        location.hash = '#cuenta';
-        return;
-      }
-
-      social.favoritos[idVend] = !social.favoritos[idVend];
-      if (!social.favoritos[idVend]) delete social.favoritos[idVend];
-      guardarCacheLocal();
-
-      mostrarToast(
-        social.favoritos[idVend] ? 'Agregado a tus favoritos' : 'Eliminado de favoritos',
-        'info'
-      );
-      renderizar();
-    });
-
-    renderizar();
-  },
-
-  /* -------------------------------------------------------------
-     B. COTIZADOR: Cálculo de tiempo/peso/infill, chat y comprobante
-     ------------------------------------------------------------- */
-  cotizador() {
-    const { query } = obtenerRutaActiva();
-    const params = new URLSearchParams(query);
-    const paramVendedor = params.get('v');
-
-    const u = obtenerUsuarioActual();
-    const social = u ? obtenerSocialUsuario(u.id) : { favoritos: {}, contactos: {} };
-
-    // Vendedores disponibles (favoritos o todos si no hay favoritos)
-    const todosVendedores = Object.keys(BD.vendedores);
-    if (!todosVendedores.length) {
-      $('sinFavoritos').hidden = false;
-      $('contenido').hidden = true;
-      return;
-    }
-
-    let disponibles = todosVendedores.filter(id => social.favoritos && social.favoritos[id]);
-    if (!disponibles.length) {
-      disponibles = todosVendedores;
-    }
-    if (paramVendedor && BD.vendedores[paramVendedor] && !disponibles.includes(paramVendedor)) {
-      disponibles.unshift(paramVendedor);
-    }
-
-    $('sinFavoritos').hidden = true;
-    $('contenido').hidden = false;
-
-    // Selector de vendedores
-    const selVendedor = $('vendedor');
-    selVendedor.innerHTML = disponibles.map(id => {
-      const v = BD.vendedores[id];
-      return `<option value="${esc(id)}">${esc(v.nombre)} (${v.ciudad || 'Colombia'}) - ${pesos(v.hora)}/h</option>`;
-    }).join('');
-
-    let actualId = (paramVendedor && BD.vendedores[paramVendedor]) ? paramVendedor : disponibles[0];
-    selVendedor.value = actualId;
-
-    // Selector de materiales dinámico según el taller actual
-    const actualizarSelectorMateriales = () => {
-      const v = BD.vendedores[actualId];
-      const selMat = $('material');
-      const mats = v && v.mat ? Object.keys(v.mat) : ['PLA', 'PETG'];
-      const actualVal = selMat.value;
-      selMat.innerHTML = mats.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
-      if (mats.includes(actualVal)) {
-        selMat.value = actualVal;
-      }
-    };
-    actualizarSelectorMateriales();
-
-    // Estado del cálculo y última cotización calculada
-    let cotizacionCalculada = null;
-
-    // Algoritmo de cálculo transparente
-    const calcular = () => {
-      const v = BD.vendedores[actualId];
-      if (!v) return null;
-
-      const mat = $('material').value;
-      if (!v.mat || v.mat[mat] === undefined) {
-        $('sinMaterial').hidden = false;
-        $('sinMaterial').textContent = `El taller ${v.nombre} no maneja el material ${mat}. Elige otro filamento.`;
-        return null;
-      }
-      $('sinMaterial').hidden = true;
-
-      const horas = leer('horas') + (leer('minutos') / 60);
-      const gramos = Math.max(1, leer('gramos'));
-      const cantidad = Math.max(1, leer('cantidad'));
-
-      // Costos directos
-      const costoTiempo = horas * v.hora * cantidad;
-      const costoMaterial = (gramos * (v.mat[mat] / 1000)) * cantidad;
-      const costoMargen = (costoTiempo + costoMaterial) * (v.margen / 100);
-
-      // Descuento por volumen
-      let porcentajeDescuento = 0;
-      if (cantidad >= 10) porcentajeDescuento = 0.10; // 10% descuento
-      else if (cantidad >= 3) porcentajeDescuento = 0.05; // 5% descuento
-
-      const subtotal = costoTiempo + costoMaterial + costoMargen;
-      const descuento = subtotal * porcentajeDescuento;
-      const total = Math.round(subtotal - descuento);
-
-      return {
-        vendedorId: actualId,
-        vendedorNombre: v.nombre,
-        vendedorTel: v.tel,
-        material: mat,
-        horas: leer('horas'),
-        minutos: leer('minutos'),
-        gramos,
-        cantidad,
-        costoTiempo,
-        costoMaterial,
-        costoMargen,
-        descuento,
-        porcentajeDescuento,
-        total
-      };
-    };
-
-    // Actualizar interfaz con el cálculo
-    const actualizarVista = () => {
-      const v = BD.vendedores[actualId];
-      if (!v) return;
-
-      $('vNombre').textContent = v.nombre;
-      $('resenaVendedor').textContent = obtenerRatingVendedor(actualId).texto;
-
-      const c = calcular();
-      cotizacionCalculada = c;
-
-      if (!c) {
-        $('costoTiempo').textContent = '—';
-        $('costoMaterial').textContent = '—';
-        $('costoMargen').textContent = '—';
-        $('total').textContent = '—';
-        return;
-      }
-
-      $('costoTiempo').textContent = pesos(c.costoTiempo);
-      $('costoMaterial').textContent = pesos(c.costoMaterial);
-      $('costoMargen').textContent = pesos(c.costoMargen);
-      $('total').textContent = pesos(c.total);
-
-      // Descuento
-      if (c.descuento > 0) {
-        $('filaDescuento').hidden = false;
-        $('costoDescuento').textContent = `- ${pesos(c.descuento)} (${c.porcentajeDescuento * 100}%)`;
-      } else {
-        $('filaDescuento').hidden = true;
-      }
-
-      // Barra porcentual
-      const baseTotal = (c.costoTiempo + c.costoMaterial + c.costoMargen) || 1;
-      const pTiempo = Math.round((c.costoTiempo / baseTotal) * 100);
-      const pMaterial = Math.round((c.costoMaterial / baseTotal) * 100);
-      const pMargen = 100 - pTiempo - pMaterial;
-
-      $('barraTiempo').style.width = `${Math.max(5, pTiempo)}%`;
-      $('barraMaterial').style.width = `${Math.max(5, pMaterial)}%`;
-      $('barraMargen').style.width = `${Math.max(5, pMargen)}%`;
-
-      // Tabla comparativa entre todos los talleres
-      const mat = $('material').value;
-      const comparaciones = Object.entries(BD.vendedores)
-        .map(([id, t]) => {
-          if (!t.mat || t.mat[mat] === undefined) return null;
-          const horasTotales = c.horas + (c.minutos / 60);
-          const tCostoTiempo = horasTotales * t.hora * c.cantidad;
-          const tCostoMaterial = (c.gramos * (t.mat[mat] / 1000)) * c.cantidad;
-          const tMargen = (tCostoTiempo + tCostoMaterial) * (t.margen / 100);
-          const tSubtotal = tCostoTiempo + tCostoMaterial + tMargen;
-          const tDesc = tSubtotal * c.porcentajeDescuento;
-          return {
-            id,
-            nombre: t.nombre,
-            total: Math.round(tSubtotal - tDesc),
-            hora: t.hora,
-            matPrecio: t.mat[mat]
-          };
-        })
-        .filter(Boolean)
-        .sort((a, b) => a.total - b.total);
-
-      const listaComp = $('listaComparacion');
-      if (comparaciones.length > 0) {
-        listaComp.innerHTML = comparaciones.map((item, idx) => `
-          <div class="linea" style="${item.id === actualId ? 'font-weight:700; color:var(--primario);' : ''}">
-            <span>
-              ${idx === 0 ? '🏆 ' : ''}${esc(item.nombre)}
-              ${item.id === actualId ? ' (Seleccionado)' : ''}
-              ${idx === 0 ? '<span style="color:var(--exito); font-size:0.75rem; font-weight:700; margin-left:6px;">MÁS ECONÓMICO</span>' : ''}
-            </span>
-            <b class="mono">${pesos(item.total)}</b>
-          </div>
-        `).join('');
-      } else {
-        listaComp.innerHTML = '<p class="suave">Ningún taller tiene disponible este material actualmente.</p>';
-      }
-    };
-
-    // Eventos de entrada
-    selVendedor.addEventListener('change', () => {
-      actualId = selVendedor.value;
-      actualizarSelectorMateriales();
-      actualizarVista();
-    });
-
-    ['material', 'horas', 'minutos', 'gramos', 'cantidad'].forEach(id => {
-      const el = $(id);
-      if (el) el.addEventListener('input', actualizarVista);
-    });
-
-    // Control asistido de densidad de infill
-    const infillSlider = $('infillRelleno');
-    if (infillSlider) {
-      infillSlider.addEventListener('input', () => {
-        const val = Number(infillSlider.value);
-        $('infillPorcentaje').textContent = `${val}%`;
-        let desc = 'Ligero (Decorativo)';
-        if (val >= 75) desc = 'Ultra Resistente (Mecánico / Sólido)';
-        else if (val >= 40) desc = 'Resistente (Uso funcional)';
-        else if (val >= 20) desc = 'Estándar recomendado';
-        $('infillTexto').textContent = `${val}% (${desc})`;
-
-        // Ajuste inteligente proporcional sobre peso si el usuario usa el slider
-        actualizarVista();
-      });
-    }
-
-    // Plantillas rápidas
-    document.querySelectorAll('.btn-plantilla').forEach(btn => {
-      btn.addEventListener('click', () => {
-        $('horas').value = btn.dataset.h;
-        $('minutos').value = btn.dataset.m;
-        $('gramos').value = btn.dataset.g;
-        $('nombrePieza').value = btn.dataset.n;
-        actualizarVista();
-        mostrarToast(`Plantilla "${btn.dataset.n}" cargada`, 'info');
-      });
-    });
-
-    // Interruptor manual
-    const interruptor = $('interruptor');
-    if (interruptor) {
-      interruptor.addEventListener('change', () => {
-        $('manual').hidden = !interruptor.checked;
-        actualizarVista();
-      });
-    }
-
-    // ==============================================================
-    // ACCIÓN: GUARDAR COTIZACIÓN EN PHP (guardar.php)
-    // ==============================================================
-    const btnGuardar = $('btnGuardarCotizacion');
-    if (btnGuardar) {
-      btnGuardar.onclick = async () => {
-        const c = cotizacionCalculada || calcular();
-        if (!c) {
-          mostrarToast('Error al calcular presupuesto', 'error');
-          return;
-        }
-
-        const nombrePieza = ($('nombrePieza') ? $('nombrePieza').value.trim() : '') || 'Pieza 3D Personalizada';
-        const usuario = obtenerUsuarioActual();
-        const perfil = obtenerPerfilActual();
-
-        const payloadCotizacion = {
-          cliente_id: usuario ? usuario.id : 'invitado',
-          cliente_nombre: perfil ? perfil.nombre : (usuario ? usuario.correo : 'Cliente Web'),
-          cliente_tel: perfil ? perfil.tel : '',
-          vendedor_id: c.vendedorId,
-          vendedor_nombre: c.vendedorNombre,
-          pieza_nombre: nombrePieza,
-          material: c.material,
-          horas: c.horas,
-          minutos: c.minutos,
-          gramos: c.gramos,
-          cantidad: c.cantidad,
-          costo_tiempo: c.costoTiempo,
-          costo_material: c.costoMaterial,
-          costo_margen: c.costoMargen,
-          descuento: c.descuento,
-          total: c.total,
-          notas: `Corte: ${c.horas}h ${c.minutos}m, ${c.gramos}g de ${c.material}.`
-        };
-
-        btnGuardar.disabled = true;
-        btnGuardar.textContent = 'Guardando en PHP...';
-
-        const resp = await peticionPHP('guardar_cotizacion', { cotizacion: payloadCotizacion });
-
-        if (resp && resp.ok && resp.cotizacion) {
-          BD.cotizaciones.unshift(resp.cotizacion);
-          guardarCacheLocal();
-          mostrarToast(`✅ Cotización ${resp.cotizacion.id} guardada con éxito en el servidor PHP`, 'exito');
-        } else {
-          // Respaldo local si PHP no responde
-          const idLocal = 'COT-' + Math.random().toString(36).substring(2, 7).toUpperCase();
-          const cotLocal = {
-            id: idLocal,
-            fecha: new Date().toLocaleString('es-CO'),
-            ...payloadCotizacion
-          };
-          BD.cotizaciones.unshift(cotLocal);
-          guardarCacheLocal();
-          mostrarToast(`Cotización ${idLocal} guardada en tu historial local`, 'exito');
-        }
-
-        btnGuardar.disabled = false;
-        btnGuardar.innerHTML = '💾 Guardar Cotización en PHP';
-        actualizarMetricasInicio();
-      };
-    }
-
-    // ==============================================================
-    // ACCIÓN: COMPROBANTE / TICKET IMPRIMIBLE
-    // ==============================================================
-    const btnModal = $('btnVerComprobante');
-    const modal = $('modalComprobante');
-    const btnCerrarModal = $('btnCerrarModal');
-    const btnImprimirTicket = $('btnImprimirTicket');
-
-    const abrirComprobante = () => {
-      const c = cotizacionCalculada || calcular();
-      if (!c) return;
-
-      const perfil = obtenerPerfilActual();
-      const nombrePieza = ($('nombrePieza') ? $('nombrePieza').value.trim() : '') || 'Pieza 3D Personalizada';
-
-      $('ticketId').textContent = 'COT-' + Date.now().toString(36).toUpperCase().slice(-5);
-      $('ticketFecha').textContent = `Fecha: ${new Date().toLocaleDateString('es-CO')}`;
-      $('ticketCliente').textContent = perfil ? `${perfil.nombre} (${perfil.tel || 'Sin WhatsApp'})` : 'Cliente Web';
-      $('ticketTaller').textContent = `${c.vendedorNombre} (${BD.vendedores[c.vendedorId]?.ciudad || 'Colombia'})`;
-      $('ticketPieza').textContent = nombrePieza;
-      $('ticketMaterial').textContent = c.material;
-      $('ticketTiempo').textContent = `${c.horas}h ${c.minutos}min`;
-      $('ticketPeso').textContent = `${c.gramos} g`;
-      $('ticketCantidad').textContent = `${c.cantidad} unidad(es)`;
-      $('ticketCostoTiempo').textContent = pesos(c.costoTiempo);
-      $('ticketCostoMaterial').textContent = pesos(c.costoMaterial);
-      $('ticketCostoMargen').textContent = pesos(c.costoMargen);
-      $('ticketTotal').textContent = pesos(c.total) + ' COP';
-
-      modal.hidden = false;
-    };
-
-    if (btnModal) btnModal.onclick = abrirComprobante;
-    if (btnCerrarModal) btnCerrarModal.onclick = () => { modal.hidden = true; };
-    if (btnImprimirTicket) btnImprimirTicket.onclick = () => window.print();
-
-    // ==============================================================
-    // ACCIÓN: ENVIAR A WHATSAPP
-    // ==============================================================
-    const btnWhatsApp = $('btnWhatsAppDirecto');
-    if (btnWhatsApp) {
-      btnWhatsApp.onclick = () => {
-        const c = cotizacionCalculada || calcular();
-        if (!c) return;
-
-        const telLimpio = String(c.vendedorTel || '').replace(/\D/g, '');
-        const nombrePieza = ($('nombrePieza') ? $('nombrePieza').value.trim() : '') || 'Pieza 3D';
-
-        const mensaje = 
-`👋 Hola *${c.vendedorNombre}*, coticé una pieza mediante la red *PrintAnts*:
-📌 *Modelo:* ${nombrePieza}
-🧵 *Material:* ${c.material}
-⏱️ *Tiempo de corte:* ${c.horas}h ${c.minutos}m
-⚖️ *Peso neto:* ${c.gramos}g
-📦 *Cantidad:* ${c.cantidad} ud(s)
-💰 *Total estimado:* ${pesos(c.total)} COP
-
-¿Tienes disponibilidad de máquina para coordinar la impresión?`;
-
-        const url = `https://wa.me/${telLimpio}?text=${encodeURIComponent(mensaje)}`;
-        window.open(url, '_blank', 'noopener,noreferrer');
-      };
-    }
-
-    // ==============================================================
-    // ACCIÓN: CHAT INTEGRADO Y CALIFICACIÓN
-    // ==============================================================
-    const btnChat = $('contactar');
-    const cajaChat = $('chat');
-    const btnCerrarChat = $('chatCerrar');
-    const btnEnviarChat = $('chatEnviar');
-    const inputChat = $('chatTexto');
-    const contMensajes = $('chatMensajes');
-    const btnCalificar = $('calificar');
-    const cajaEstrellas = $('cajaEstrellas');
-
-    let chatAbierto = false;
-
-    const renderChat = () => {
-      cajaChat.hidden = !chatAbierto;
-      if (!chatAbierto) return;
-
-      $('chatTitulo').textContent = `Chat con ${BD.vendedores[actualId].nombre}`;
-      const listaMsjs = BD.mensajes[actualId] || [];
-
-      if (!listaMsjs.length) {
-        listaMsjs.push({
-          de: 'vendedor',
-          texto: `¡Hola! Soy ${BD.vendedores[actualId].nombre}. Cuéntame sobre tu proyecto o archivo STL/STEP para afinar detalles.`,
-          fecha: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
-        });
-        BD.mensajes[actualId] = listaMsjs;
-      }
-
-      contMensajes.innerHTML = listaMsjs.map(m => `
-        <div class="msj ${m.de === 'cliente' ? 'propio' : 'recibido'}">
-          <div>${esc(m.texto)}</div>
-          <div class="msj-hora">${esc(m.fecha)}</div>
-        </div>
-      `).join('');
-
-      contMensajes.scrollTop = contMensajes.scrollHeight;
-    };
-
-    if (btnChat) {
-      btnChat.onclick = () => {
-        chatAbierto = !chatAbierto;
-        renderChat();
-      };
-    }
-    if (btnCerrarChat) {
-      btnCerrarChat.onclick = () => {
-        chatAbierto = false;
-        renderChat();
-      };
-    }
-
-    const enviarMensajeChat = async () => {
-      const texto = inputChat.value.trim();
-      if (!texto) return;
-
-      const nuevoMsj = {
-        de: 'cliente',
-        texto,
-        fecha: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
-      };
-
-      BD.mensajes[actualId] = BD.mensajes[actualId] || [];
-      BD.mensajes[actualId].push(nuevoMsj);
-      inputChat.value = '';
-      renderChat();
-
-      // Guardar en PHP
-      peticionPHP('guardar_mensaje', {
-        vendedor_id: actualId,
-        texto,
-        de: 'cliente'
-      });
-
-      // Respuesta simulada inteligente del taller
-      setTimeout(() => {
-        const respuestas = [
-          '¡Perfecto! El filamento está disponible en stock para imprimir hoy mismo.',
-          'Revisado. Podemos calibrar la pieza a 0.20mm de altura de capa para un excelente acabado.',
-          'Entendido. Si confirmas por WhatsApp te aparto el turno de máquina de inmediato.'
-        ];
-        const rTexto = respuestas[Math.floor(Math.random() * respuestas.length)];
-        const rMsj = {
-          de: 'vendedor',
-          texto: rTexto,
-          fecha: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
-        };
-        BD.mensajes[actualId].push(rMsj);
-        guardarCacheLocal();
-        renderChat();
-      }, 1000);
-    };
-
-    if (btnEnviarChat) btnEnviarChat.onclick = enviarMensajeChat;
-    if (inputChat) {
-      inputChat.addEventListener('keydown', e => {
-        if (e.key === 'Enter') enviarMensajeChat();
-      });
-    }
-
-    // Calificar vendedor con estrellas
-    if (btnCalificar) {
-      btnCalificar.onclick = () => {
-        cajaEstrellas.hidden = !cajaEstrellas.hidden;
-        if (!cajaEstrellas.hidden) {
-          const miVoto = (social.votos && social.votos[actualId]) || 0;
-          cajaEstrellas.innerHTML = `
-            <div class="estrellas-grupo">
-              ${[1, 2, 3, 4, 5].map(n => `
-                <button type="button" class="btn-estrella ${n <= miVoto ? 'marcada' : ''}" data-estrella="${n}">★</button>
-              `).join('')}
-            </div>
-            <div class="suave" style="font-size:0.8rem;">
-              ${miVoto ? `Tu calificación actual: ${miVoto} estrella(s)` : 'Toca una estrella para calificar'}
-            </div>
-          `;
-        }
-      };
-    }
-
-    if (cajaEstrellas) {
-      cajaEstrellas.addEventListener('click', async e => {
-        const btn = e.target.closest('[data-estrella]');
-        if (!btn) return;
-        const n = Number(btn.dataset.estrella);
-        social.votos[actualId] = n;
-        guardarCacheLocal();
-
-        mostrarToast(`Calificaste a ${BD.vendedores[actualId].nombre} con ${n} estrella(s)`, 'exito');
-
-        // Enviar a guardar.php
-        peticionPHP('guardar_resena', {
-          vendedor_id: actualId,
-          usuario_id: u ? u.id : 'anonimo',
-          estrellas: n,
-          autor: u ? (BD.perfiles[u.id]?.nombre || u.correo) : 'Cliente'
-        });
-
-        $('resenaVendedor').textContent = obtenerRatingVendedor(actualId).texto;
-        btnCalificar.click();
-      });
-    }
-
-    actualizarVista();
-  },
-
-  /* -------------------------------------------------------------
-     C. HISTORIAL DE COTIZACIONES (Guardadas con PHP)
-     ------------------------------------------------------------- */
-  historial() {
-    const lista = $('listaCotizacionesGuardadas');
-    const vacio = $('vacioCotizaciones');
-    const btnExportar = $('btnExportarCotizaciones');
-
-    const cotizaciones = BD.cotizaciones || [];
-
-    if (!cotizaciones.length) {
-      if (vacio) vacio.hidden = false;
-      if (lista) lista.innerHTML = '';
-      return;
-    }
-
-    if (vacio) vacio.hidden = true;
-
-    lista.innerHTML = cotizaciones.map(c => `
-      <div class="cotizacion-item">
-        <div class="cotizacion-info">
-          <h3>${esc(c.pieza_nombre || 'Pieza 3D')} <span class="estado-pill guardada">${esc(c.id)}</span></h3>
-          <div class="cotizacion-meta">
-            <span>Taller: <b>${esc(c.vendedor_nombre)}</b></span>
-            <span>·</span>
-            <span>Material: ${esc(c.material)}</span>
-            <span>·</span>
-            <span>${c.horas}h ${c.minutos}m / ${c.gramos}g</span>
-            <span>·</span>
-            <span>${c.cantidad} ud(s)</span>
-          </div>
-          <div class="nota" style="margin-top:4px;">Guardado el: ${esc(c.fecha || 'Reciente')}</div>
-        </div>
-        <div class="cotizacion-precio">
-          <div class="cotizacion-monto">${pesos(c.total)} COP</div>
-          <button type="button" class="btn claro sm" data-recotizar="${esc(c.vendedor_id)}" style="margin-top:6px;">
-            ⚡ Abrir en Cotizador
-          </button>
-        </div>
-      </div>
-    `).join('');
-
-    lista.addEventListener('click', e => {
-      const btn = e.target.closest('[data-recotizar]');
-      if (!btn) return;
-      location.hash = `#cotizador?v=${encodeURIComponent(btn.dataset.recotizar)}`;
-    });
-
-    if (btnExportar) {
-      btnExportar.onclick = () => {
-        const blob = new Blob([JSON.stringify(cotizaciones, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `cotizaciones_3d_${new Date().toISOString().slice(0, 10)}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        mostrarToast('Historial exportado en JSON', 'exito');
-      };
-    }
-  },
-
-  /* -------------------------------------------------------------
-     D. MI TALLER: Panel del vendedor para tarifas y materiales
-     ------------------------------------------------------------- */
-  taller() {
-    const u = obtenerUsuarioActual();
-    const v = obtenerVendedorActual();
-
-    if (!v) {
-      mostrarToast('Debes ser un taller o vendedor registrado para acceder a esta sección.', 'error');
-      location.hash = '#cuenta';
-      return;
-    }
-
-    const inputHora = $('tHora');
-    const inputMargen = $('tMargen');
-    const inputNota = $('tNota');
-    const inputCiudad = $('tCiudad');
-    const contMateriales = $('materiales');
-
-    inputHora.value = v.hora || 3000;
-    inputMargen.value = v.margen || 20;
-    inputNota.value = v.nota || '';
-    inputCiudad.value = v.ciudad || 'Colombia';
-
-    // Copia temporal de materiales para editar
-    const mats = Object.assign({}, v.mat || { PLA: 65000, PETG: 75000 });
-
-    const renderMateriales = () => {
-      contMateriales.innerHTML = Object.entries(mats).map(([nombre, precio]) => `
-        <div class="fila" style="align-items:end; margin-bottom:8px;">
-          <div>
-            <label style="margin:4px 0;">${esc(nombre)} (COP / kg)</label>
-            <input type="number" min="1000" step="1000" data-mat="${esc(nombre)}" value="${precio}">
-          </div>
-          <div>
-            <button type="button" class="btn peligro sm" data-borrar-mat="${esc(nombre)}">Eliminar</button>
-          </div>
-        </div>
-      `).join('') || '<p class="suave">No tienes materiales configurados.</p>';
-    };
-
-    contMateriales.oninput = e => {
-      const mat = e.target.dataset.mat;
-      if (mat) {
-        mats[mat] = num(e.target.value);
-      }
-    };
-
-    contMateriales.onclick = e => {
-      const borrar = e.target.dataset.borrarMat;
-      if (borrar) {
-        delete mats[borrar];
-        renderMateriales();
-        mostrarToast(`Material ${borrar} removido de la lista`, 'info');
-      }
-    };
-
-    // Agregar nuevo material
-    $('agregar').onclick = () => {
-      const nombre = $('nuevoNombre').value.trim();
-      const precio = leer('nuevoPrecio');
-      if (!nombre) {
-        mostrarToast('Escribe el nombre del nuevo material (ej. Nylon, Resina)', 'error');
-        return;
-      }
-      if (precio < 1000) {
-        mostrarToast('Ingresa un precio por kilo válido (mínimo 1000 COP)', 'error');
-        return;
-      }
-
-      mats[nombre] = precio;
-      $('nuevoNombre').value = '';
-      $('nuevoPrecio').value = '';
-      renderMateriales();
-      mostrarToast(`Material "${nombre}" añadido. Recuerda guardar los cambios.`, 'exito');
-    };
-
-    // Guardar cambios en el servidor PHP
-    $('tGuardar').onclick = async () => {
-      const hora = leer('tHora');
-      const margen = leer('tMargen');
-      if (hora < 100) {
-        mostrarToast('La tarifa por hora debe ser de al menos 100 COP', 'error');
-        return;
-      }
-      if (!Object.keys(mats).length) {
-        mostrarToast('Configura al menos un material de impresión', 'error');
-        return;
-      }
-
-      $('tGuardar').disabled = true;
-      $('tGuardar').textContent = 'Guardando en PHP...';
-
-      const payload = {
-        id: u.id,
-        hora,
-        margen,
-        nota: inputNota.value.trim(),
-        ciudad: inputCiudad.value.trim(),
-        mat: mats
-      };
-
-      const resp = await peticionPHP('guardar_taller', payload);
-
-      // Actualizar estado local
-      BD.vendedores[u.id] = Object.assign(BD.vendedores[u.id], payload);
-      guardarCacheLocal();
-
-      $('tGuardar').disabled = false;
-      $('tGuardar').innerHTML = '💾 Guardar Cambios en Servidor PHP';
-
-      if (resp && resp.ok) {
-        mostrarToast('¡Tarifas y materiales actualizados en el servidor PHP!', 'exito');
-      } else {
-        mostrarToast('Cambios guardados en almacenamiento local', 'exito');
-      }
-    };
-
-    renderMateriales();
-  },
-
-  /* -------------------------------------------------------------
-     E. CUENTA: Login, registro, cambio de rol y edición de perfil
-     ------------------------------------------------------------- */
-  cuenta() {
-    let modo = 'entrar';
-    const u = obtenerUsuarioActual();
-    const perfil = obtenerPerfilActual();
-    const vend = obtenerVendedorActual();
-
-    const estadoEl = $('estado');
-    const accesoEl = $('acceso');
-    const registroEl = $('registro');
-    const btnCerrar = $('cerrar');
-
-    // Visibilidad según estado de sesión
-    accesoEl.hidden = !!u;
-    registroEl.hidden = !u;
-    btnCerrar.hidden = !u;
-
-    if (!u) {
-      estadoEl.innerHTML = `
-        <h2>Bienvenido</h2>
-        <p class="suave">Inicia sesión o crea una cuenta para cotizar con tus talleres favoritos o registrar tu propio taller de impresión 3D.</p>
-      `;
-    } else {
-      estadoEl.innerHTML = `
-        <h2>Hola, ${esc(perfil ? perfil.nombre : u.correo)}</h2>
-        <div class="meta-vendedor" style="margin-top:6px;">
-          <span>📧 ${esc(u.correo)}</span>
-          <span>·</span>
-          <span>Rol: <b>${vend ? 'Taller / Vendedor 3D' : 'Cliente'}</b></span>
-        </div>
-      `;
-
-      $('rol').value = vend ? 'vendedor' : 'cliente';
-      $('nombre').value = perfil ? perfil.nombre : '';
-      $('tel').value = perfil ? perfil.tel : '';
-      $('nota').value = vend ? vend.nota : '';
-      $('borrar').hidden = false;
-
-      const alternarCamposRol = () => {
-        const esV = $('rol').value === 'vendedor';
-        $('datosVendedor').hidden = !esV;
-      };
-      $('rol').onchange = alternarCamposRol;
-      alternarCamposRol();
-    }
-
-    // Pestañas Iniciar Sesión / Crear Cuenta
-    const pestanaEntrar = $('pestanaEntrar');
-    const pestanaCrear = $('pestanaCrear');
-    const btnEntrar = $('entrar');
-
-    const cambiarPestana = m => {
-      modo = m;
-      pestanaEntrar.classList.toggle('activa', m === 'entrar');
-      pestanaCrear.classList.toggle('activa', m === 'crear');
-      btnEntrar.textContent = m === 'entrar' ? 'Iniciar Sesión' : 'Crear Cuenta Nueva';
-      aviso('mensajeAcceso', '');
-    };
-
-    pestanaEntrar.onclick = () => cambiarPestana('entrar');
-    pestanaCrear.onclick = () => cambiarPestana('crear');
-
-    // Botón de autenticación
-    btnEntrar.onclick = async () => {
-      const correo = $('correo').value.trim().toLowerCase();
-      const clave = $('clave').value;
-
-      if (!correo || clave.length < 6) {
-        aviso('mensajeAcceso', 'Ingresa un correo válido y contraseña de al menos 6 caracteres.', false);
-        return;
-      }
-
-      btnEntrar.disabled = true;
-      btnEntrar.textContent = 'Verificando con PHP...';
-
-      const resp = await peticionPHP('guardar_usuario', {
-        correo,
-        clave,
-        es_nuevo: modo === 'crear'
-      });
-
-      if (resp && resp.ok && resp.usuario) {
-        BD.usuarios[resp.usuario.id] = { id: resp.usuario.id, correo: resp.usuario.correo, clave };
-        BD.sesion = resp.usuario.id;
-        if (resp.perfil) BD.perfiles[resp.usuario.id] = resp.perfil;
-        if (resp.vendedor) BD.vendedores[resp.usuario.id] = resp.vendedor;
-        guardarCacheLocal();
-
-        mostrarToast(resp.mensaje || '¡Acceso concedido!', 'exito');
-        setTimeout(() => location.reload(), 300);
-        return;
-      }
-
-      // Si PHP falló o no está disponible, gestionar en local
-      if (resp && !resp.ok) {
-        aviso('mensajeAcceso', resp.error || 'Error al autenticar', false);
-        btnEntrar.disabled = false;
-        btnEntrar.textContent = modo === 'entrar' ? 'Iniciar Sesión' : 'Crear Cuenta Nueva';
-        return;
-      }
-
-      // Fallback local
-      const idExistente = Object.keys(BD.usuarios).find(id => BD.usuarios[id].correo === correo);
-      if (modo === 'crear') {
-        if (idExistente) {
-          aviso('mensajeAcceso', 'Ese correo ya está registrado localmente.', false);
-          btnEntrar.disabled = false;
-          return;
-        }
-        const nuevoId = 'u_' + Date.now().toString(36);
-        BD.usuarios[nuevoId] = { id: nuevoId, correo, clave };
-        BD.sesion = nuevoId;
-        guardarCacheLocal();
-        mostrarToast('Cuenta creada localmente', 'exito');
-        setTimeout(() => location.reload(), 300);
-      } else {
-        if (!idExistente || BD.usuarios[idExistente].clave !== clave) {
-          aviso('mensajeAcceso', 'Correo o contraseña incorrectos.', false);
-          btnEntrar.disabled = false;
-          return;
-        }
-        BD.sesion = idExistente;
-        guardarCacheLocal();
-        mostrarToast('Sesión iniciada', 'exito');
-        setTimeout(() => location.reload(), 300);
-      }
-    };
-
-    // Cerrar sesión
-    btnCerrar.onclick = () => {
-      BD.sesion = null;
-      guardarCacheLocal();
-      mostrarToast('Sesión cerrada', 'info');
-      location.hash = '#inicio';
-      setTimeout(() => location.reload(), 150);
-    };
-
-    // Guardar información de perfil y taller
-    $('guardar').onclick = async () => {
-      const nombre = $('nombre').value.trim();
-      const tel = $('tel').value.replace(/\D/g, '');
-      const rol = $('rol').value;
-
-      if (!nombre) {
-        aviso('mensajeRegistro', 'Ingresa tu nombre o razón social.', false);
-        return;
-      }
-      if (tel.length < 10) {
-        aviso('mensajeRegistro', 'Ingresa un número de WhatsApp válido (mínimo 10 dígitos).', false);
-        return;
-      }
-
-      const mat = {};
-      [['PLA', 'pla'], ['PETG', 'petg'], ['ABS', 'abs'], ['TPU', 'tpu']].forEach(([m, id]) => {
-        if (leer(id) > 0) mat[m] = leer(id);
-      });
-
-      const payload = {
-        id: u.id,
-        nombre,
-        tel,
-        rol,
-        nota: $('nota').value.trim(),
-        hora: leer('hora') || 3000,
-        margen: leer('margen') || 20,
-        mat: Object.keys(mat).length ? mat : { PLA: 65000, PETG: 75000 }
-      };
-
-      const resp = await peticionPHP('guardar_perfil', payload);
-
-      BD.perfiles[u.id] = { id: u.id, nombre, tel, rol };
-      if (rol === 'vendedor') {
-        BD.vendedores[u.id] = {
-          id: u.id,
-          nombre,
-          tel,
-          nota: payload.nota,
-          hora: payload.hora,
-          margen: payload.margen,
-          ciudad: 'Colombia',
-          insignia: 'Taller Activo',
-          mat: payload.mat
-        };
-      } else {
-        delete BD.vendedores[u.id];
-      }
-      guardarCacheLocal();
-
-      mostrarToast('Perfil guardado exitosamente en el servidor PHP', 'exito');
-      setTimeout(() => {
-        location.hash = rol === 'vendedor' ? '#taller' : '#cotizador';
-        location.reload();
-      }, 400);
-    };
-
-    // Eliminar cuenta
-    $('borrar').onclick = async () => {
-      if (!confirm('¿Estás seguro de que deseas eliminar tu cuenta permanentemente?')) return;
-      await peticionPHP('borrar_cuenta', { id: u.id });
-      delete BD.usuarios[u.id];
-      delete BD.perfiles[u.id];
-      delete BD.vendedores[u.id];
-      BD.sesion = null;
-      guardarCacheLocal();
-      mostrarToast('Cuenta eliminada', 'info');
-      location.hash = '#inicio';
-      setTimeout(() => location.reload(), 200);
-    };
-  }
-};
-
-/* =====================================================================
-   5. INICIALIZACIÓN Y ENRUTADOR
-   ===================================================================== */
-function iniciarAplicacion() {
-  inicializarTema();
-  construirMenu();
-
-  const { pagina } = obtenerRutaActiva();
-
-  // Mostrar únicamente la sección activa
-  document.querySelectorAll('[data-p]').forEach(s => {
-    s.hidden = s.dataset.p !== pagina;
-  });
-
-  const titulos = {
-    inicio: 'Inicio · Red Robótica 3D',
-    cotizador: 'Cotizador 3D Avanzado',
-    vendedores: 'Talleres PrintAnts',
-    historial: 'Mis Cotizaciones',
-    taller: 'Mi Taller PrintAnts',
-    cuenta: 'Mi Perfil'
-  };
-  document.title = `${titulos[pagina] || 'PrintAnts'} · PrintAnts`;
-
-  // Ejecutar el controlador correspondiente
-  if (controladores[pagina]) {
-    controladores[pagina]();
-  }
-
-  // Sincronizar en segundo plano con PHP
-  sincronizarConPHP();
-}
-
-window.addEventListener('hashchange', () => {
-  construirMenu();
-  const { pagina } = obtenerRutaActiva();
-  document.querySelectorAll('[data-p]').forEach(s => {
-    s.hidden = s.dataset.p !== pagina;
-  });
-  if (controladores[pagina]) {
-    controladores[pagina]();
-  }
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+// Cierre global con ESC y click exterior
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') cerrarTodosLosModales();
 });
 
-// Arrancar cuando el DOM esté listo
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', iniciarAplicacion);
-} else {
-  iniciarAplicacion();
+document.querySelectorAll('.modal-overlay').forEach(modal => {
+  modal.addEventListener('click', e => {
+    if (e.target === modal) cerrarTodosLosModales();
+  });
+});
+
+/* -------------------------------------------------------------
+   4. FAVORITOS DE PRODUCTOS
+   ------------------------------------------------------------- */
+function esFavorito(prodId) {
+  return !!BD.favoritos[prodId];
 }
+
+function toggleFavorito(prodId) {
+  if (BD.favoritos[prodId]) {
+    delete BD.favoritos[prodId];
+    mostrarToast('Quitado de tus favoritos', 'info');
+  } else {
+    BD.favoritos[prodId] = true;
+    mostrarToast('Guardado en tus favoritos ❤️', 'exito');
+  }
+  guardarCacheLocal();
+  actualizarContadorFavoritos();
+  renderizarProductos();
+}
+
+function actualizarContadorFavoritos() {
+  const conteo = Object.keys(BD.favoritos).length;
+  const badge = $('badgeFavoritos');
+  if (badge) badge.textContent = conteo;
+}
+
+/* -------------------------------------------------------------
+   5. RENDERIZADO DEL MARKETPLACE DE PRODUCTOS
+   ------------------------------------------------------------- */
+let filtroCategoriaActual = 'todas';
+let busquedaActual = '';
+let ordenActual = 'destacados';
+
+function renderizarProductos() {
+  const grid = $('gridProductos');
+  if (!grid) return;
+
+  let lista = [...BD.productos];
+
+  // Filtro por categoría
+  if (filtroCategoriaActual !== 'todas') {
+    lista = lista.filter(p => p.categoria === filtroCategoriaActual);
+  }
+
+  // Búsqueda por texto
+  if (busquedaActual) {
+    const q = busquedaActual.toLowerCase();
+    lista = lista.filter(p => 
+      p.nombre.toLowerCase().includes(q) ||
+      p.descripcion.toLowerCase().includes(q) ||
+      p.creador_nombre.toLowerCase().includes(q) ||
+      p.material.toLowerCase().includes(q)
+    );
+  }
+
+  // Ordenamiento
+  if (ordenActual === 'precio_asc') {
+    lista.sort((a, b) => a.precio - b.precio);
+  } else if (ordenActual === 'precio_desc') {
+    lista.sort((a, b) => b.precio - a.precio);
+  } else if (ordenActual === 'rating') {
+    lista.sort((a, b) => b.rating - a.rating);
+  }
+
+  if (!lista.length) {
+    grid.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align:center; padding:3.5rem 1rem; background:var(--fondo-panel); border:1px solid var(--borde); border-radius:var(--radio-md);">
+        <div style="font-size:3rem; margin-bottom:0.75rem;">🔍</div>
+        <h3 style="font-size:1.2rem; font-weight:800; color:var(--texto);">No encontramos piezas con ese criterio</h3>
+        <p style="color:var(--texto-secundario); max-width:440px; margin:0.4rem auto 1.5rem;">
+          Prueba con otra palabra clave o solicita una pieza a medida en nuestro cotizador 3D.
+        </p>
+        <a href="#cotizador" class="btn">Cotizar Pieza Personalizada</a>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = lista.map(p => {
+    const fav = esFavorito(p.id);
+    const creador = BD.vendedores[p.creador_id] || {};
+    const handleAutor = p.creador_handle || creador.handle || ('@' + p.creador_nombre.replace(/\s+/g, ''));
+    return `
+      <div class="producto-tarjeta" data-prod-id="${esc(p.id)}">
+        <div class="producto-imagen-box" style="background: linear-gradient(135deg, ${esc(p.color_muestra)}18, var(--fondo-suave));">
+          <span class="badge-producto-tag">${esc(p.etiqueta || 'Artesanal')}</span>
+          <button type="button" class="btn-favorito-prod ${fav ? 'activo' : ''}" data-fav-btn="${esc(p.id)}" aria-label="Favorito" title="Guardar en favoritos">
+            ${fav ? '❤️' : '🤍'}
+          </button>
+          <div class="producto-icono-grande">${p.icono || '📦'}</div>
+        </div>
+
+        <div class="producto-cuerpo">
+          <div>
+            <div class="producto-categoria-texto">${esc(p.categoria_nombre)}</div>
+            <h3 class="producto-titulo">${esc(p.nombre)}</h3>
+            
+            <div class="producto-creador-fila">
+              <span class="producto-creador-avatar">👤</span>
+              <span>Creado por <b style="color:var(--secundario);">${esc(handleAutor)}</b> · ${esc(p.ciudad)}</span>
+            </div>
+
+            <div class="producto-meta-chips">
+              <span class="chip-sutil">🧵 ${esc(p.material)}</span>
+              <span class="chip-sutil">⏱️ ${esc(p.tiempo_entrega)}</span>
+              <span class="chip-sutil" style="color:#B45309; font-weight:700;">★ ${p.rating} (${p.resenas_count})</span>
+            </div>
+          </div>
+
+          <div class="producto-pie-tarjeta">
+            <div>
+              <span class="producto-precio">${pesos(p.precio)}</span>
+              <span class="producto-precio-sub">Precio sugerido COP</span>
+            </div>
+            <button type="button" class="btn sm" data-ver-detalle="${esc(p.id)}">
+              Ver Detalle
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Eventos de click en tarjeta y ver detalle
+  grid.querySelectorAll('[data-ver-detalle]').forEach(btn => {
+    btn.onclick = e => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-ver-detalle');
+      abrirDetalleProducto(id);
+    };
+  });
+
+  // Eventos de favoritos
+  grid.querySelectorAll('[data-fav-btn]').forEach(btn => {
+    btn.onclick = e => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-fav-btn');
+      toggleFavorito(id);
+    };
+  });
+}
+
+function abrirDetalleProducto(id) {
+  const p = BD.productos.find(item => item.id === id);
+  if (!p) return;
+
+  const creador = BD.vendedores[p.creador_id] || {
+    nombre: p.creador_nombre,
+    handle: '@' + p.creador_nombre.replace(/\s+/g, ''),
+    ciudad: p.ciudad,
+    tel: '573001234567',
+    maquinas: 'Impresora 3D de alta precisión'
+  };
+
+  const cont = $('contenidoModalProducto');
+  if (!cont) return;
+
+  cont.innerHTML = `
+    <div style="display:flex; gap:1.75rem; flex-wrap:wrap;">
+      <div style="flex:1; min-width:240px; background:linear-gradient(135deg, ${esc(p.color_muestra)}20, var(--fondo-panel)); border:1px solid var(--borde); border-radius:var(--radio-md); display:flex; align-items:center; justify-content:center; padding:3rem 1rem;">
+        <span style="font-size:6.5rem; filter:drop-shadow(0 10px 20px rgba(0,0,0,0.1));">${p.icono || '📦'}</span>
+      </div>
+
+      <div style="flex:1.4; min-width:280px; display:flex; flex-direction:column; justify-content:space-between;">
+        <div>
+          <span class="badge-producto-tag" style="position:static; display:inline-block; margin-bottom:0.5rem;">${esc(p.etiqueta || 'Comunidad')}</span>
+          <h2 id="modalProdTitulo" style="font-size:1.6rem; font-weight:800; color:var(--texto); line-height:1.2;">${esc(p.nombre)}</h2>
+          <div style="font-size:0.88rem; color:var(--secundario); font-weight:700; margin:0.35rem 0 1rem;">
+            Creado por ${esc(creador.handle || p.creador_nombre)} · ${esc(p.ciudad)}
+          </div>
+
+          <p style="color:var(--texto-secundario); font-size:0.92rem; line-height:1.6; margin-bottom:1.25rem;">
+            ${esc(p.descripcion)}
+          </p>
+
+          <div style="background-color:var(--fondo); border:1px solid var(--borde-suave); border-radius:var(--radio-sm); padding:0.85rem 1rem; margin-bottom:1.5rem; font-size:0.86rem; display:flex; flex-direction:column; gap:0.4rem;">
+            <div><strong>🧵 Material:</strong> ${esc(p.material)}</div>
+            <div><strong>📐 Dimensiones:</strong> ${esc(p.dimensiones || 'Personalizable')}</div>
+            <div><strong>⏱️ Tiempo de elaboración:</strong> ${esc(p.tiempo_entrega)}</div>
+            <div><strong>🖨️ Equipos de taller:</strong> ${esc(creador.maquinas || '3D FDM / Resina')}</div>
+            <div><strong>★ Valoración:</strong> ${p.rating} de 5.0 (${p.resenas_count} opiniones de clientes)</div>
+          </div>
+        </div>
+
+        <div>
+          <div style="margin-bottom:1rem; display:flex; align-items:baseline; justify-content:space-between;">
+            <div>
+              <span style="font-size:0.75rem; text-transform:uppercase; color:var(--texto-secundario); font-weight:700;">Precio de la pieza</span>
+              <div style="font-family:var(--fuente-mono); font-size:1.9rem; font-weight:800; color:var(--secundario);">${pesos(p.precio)} COP</div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:0.75rem;">
+            <a href="https://wa.me/${creador.tel}?text=${encodeURIComponent('Hola ' + creador.nombre + ', vi tu pieza "' + p.nombre + '" en PrintAnts y deseo encargarla.')}" target="_blank" rel="noopener noreferrer" class="btn" style="flex:1;">
+              📱 Encargar por WhatsApp
+            </a>
+            <button type="button" class="btn secundario" id="btnPersonalizarEnCotizador">
+              Personalizar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  abrirModal('modalDetalleProducto');
+
+  const btnCerrar = $('btnCerrarModalProd');
+  if (btnCerrar) btnCerrar.onclick = cerrarTodosLosModales;
+
+  const btnPers = $('btnPersonalizarEnCotizador');
+  if (btnPers) {
+    btnPers.onclick = () => {
+      cerrarTodosLosModales();
+      window.location.hash = '#cotizador';
+      if ($('nombrePieza')) $('nombrePieza').value = p.nombre + ' (Personalizado)';
+      if ($('vendedor')) $('vendedor').value = p.creador_id;
+      calcularCotizacion();
+    };
+  }
+}
+
+/* -------------------------------------------------------------
+   6. RENDERIZADO DEL DIRECTORIO DE CREADORES
+   ------------------------------------------------------------- */
+function renderizarCreadores() {
+  const cont = $('gridCreadores');
+  if (!cont) return;
+
+  const creadores = Object.values(BD.vendedores || {});
+  cont.innerHTML = creadores.map(c => `
+    <div class="creador-tarjeta">
+      <div>
+        <div class="creador-header">
+          <div class="creador-avatar-box">${c.avatar || '🧔‍♂️'}</div>
+          <div class="creador-nombres">
+            <h3>${esc(c.nombre)}</h3>
+            <div class="creador-persona">${esc(c.creador || 'Maker Pro')} <span style="font-weight:normal; opacity:0.85; font-size:0.82rem;">(${esc(c.handle || '@' + c.id)})</span></div>
+            <div class="creador-ciudad">📍 ${esc(c.ciudad)}</div>
+          </div>
+        </div>
+
+        <p class="creador-bio">${esc(c.nota)}</p>
+
+        <div class="creador-maquinas-box">
+          <strong>Máquinas en taller:</strong>
+          <span>${esc(c.maquinas || 'Impresión 3D FDM & Resina')}</span>
+        </div>
+      </div>
+
+      <div class="creador-acciones">
+        <div class="creador-tarifa">
+          ${pesos(c.hora)} <span>/h máquina</span>
+        </div>
+        <button type="button" class="btn sm secundario" data-cotizar-creador="${esc(c.id)}">
+          Cotizar
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  cont.querySelectorAll('[data-cotizar-creador]').forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.getAttribute('data-cotizar-creador');
+      window.location.hash = '#cotizador';
+      if ($('vendedor')) {
+        $('vendedor').value = id;
+        actualizarMaterialesCotizador();
+        calcularCotizacion();
+      }
+    };
+  });
+}
+
+/* -------------------------------------------------------------
+   7. COTIZADOR 3D AVANZADO & GRÁFICO DE PASTEL
+   ------------------------------------------------------------- */
+let cotizacionActual = null;
+
+function inicializarCotizador() {
+  const selTaller = $('vendedor');
+  if (!selTaller) return;
+
+  const talleres = Object.keys(BD.vendedores || {});
+  selTaller.innerHTML = talleres.map(id => {
+    const v = BD.vendedores[id];
+    return `<option value="${esc(id)}">${esc(v.nombre)} (${esc(v.ciudad)}) - ${pesos(v.hora)}/h</option>`;
+  }).join('');
+
+  actualizarMaterialesCotizador();
+  calcularCotizacion();
+
+  selTaller.onchange = () => {
+    actualizarMaterialesCotizador();
+    calcularCotizacion();
+  };
+
+  ['material', 'horas', 'minutos', 'gramos', 'cantidad'].forEach(id => {
+    const el = $(id);
+    if (el) el.oninput = () => calcularCotizacion();
+  });
+
+  const infill = $('infillRelleno');
+  if (infill) {
+    infill.oninput = () => {
+      const val = infill.value;
+      let desc = 'Ligero (Decorativo)';
+      if (val >= 75) desc = 'Ultra Resistente (Mecánico)';
+      else if (val >= 40) desc = 'Funcional (Carcasas)';
+      else if (val >= 20) desc = 'Estándar recomendado';
+      if ($('infillTexto')) $('infillTexto').textContent = `${val}% (${desc})`;
+      calcularCotizacion();
+    };
+  }
+
+  // Plantillas rápidas
+  document.querySelectorAll('.btn-plantilla').forEach(btn => {
+    btn.onclick = () => {
+      if ($('horas')) $('horas').value = btn.dataset.h;
+      if ($('minutos')) $('minutos').value = btn.dataset.m;
+      if ($('gramos')) $('gramos').value = btn.dataset.g;
+      if ($('nombrePieza')) $('nombrePieza').value = btn.dataset.n;
+      calcularCotizacion();
+      mostrarToast(`Plantilla "${btn.dataset.n}" cargada`, 'info');
+    };
+  });
+
+  // Guardar cotización
+  const btnGuardar = $('btnGuardarCotizacion');
+  if (btnGuardar) {
+    btnGuardar.onclick = async () => {
+      if (!cotizacionActual) return;
+      btnGuardar.disabled = true;
+      btnGuardar.textContent = 'Guardando...';
+
+      try {
+        const res = await fetch(URL_PHP, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accion: 'guardar_cotizacion', cotizacion: cotizacionActual })
+        });
+        const json = await res.json();
+        const guardada = (json && json.ok && json.cotizacion) ? json.cotizacion : Object.assign({}, cotizacionActual, {
+          id: 'COT-' + Date.now().toString().slice(-6),
+          fecha: new Date().toISOString().slice(0, 16).replace('T', ' ')
+        });
+        BD.cotizaciones.unshift(guardada);
+        guardarCacheLocal();
+        mostrarToast('Presupuesto guardado exitosamente', 'exito');
+      } catch (e) {
+        mostrarToast('Guardado localmente', 'info');
+      } finally {
+        btnGuardar.disabled = false;
+        btnGuardar.textContent = '💾 Guardar Cotización en PHP';
+      }
+    };
+  }
+
+  // Ver comprobante
+  const btnTicket = $('btnVerComprobante');
+  if (btnTicket) {
+    btnTicket.onclick = () => {
+      if (cotizacionActual) abrirComprobante(cotizacionActual);
+    };
+  }
+
+  // WhatsApp directo
+  const btnWa = $('btnWhatsAppDirecto');
+  if (btnWa) {
+    btnWa.onclick = () => {
+      if (!cotizacionActual) return;
+      const v = BD.vendedores[cotizacionActual.vendedor_id];
+      if (!v || !v.tel) {
+        mostrarToast('Número de taller no configurado', 'error');
+        return;
+      }
+      const texto = `Hola *${v.nombre}*, coticé mi proyecto en *PrintAnts*:\n\n` +
+        `📦 *Pieza:* ${cotizacionActual.pieza_nombre}\n` +
+        `🧵 *Material:* ${cotizacionActual.material}\n` +
+        `⏱️ *Tiempo:* ${cotizacionActual.horas}h ${cotizacionActual.minutos}m\n` +
+        `⚖️ *Peso neto:* ${cotizacionActual.gramos} g\n` +
+        `🔢 *Cantidad:* ${cotizacionActual.cantidad} ud\n` +
+        `💰 *Total estimado:* ${pesos(cotizacionActual.total)} COP\n\n` +
+        `¿Cuándo podrías comenzar la impresión?`;
+      window.open(`https://wa.me/${v.tel}?text=${encodeURIComponent(texto)}`, '_blank');
+    };
+  }
+}
+
+function actualizarMaterialesCotizador() {
+  const tallerId = $('vendedor') ? $('vendedor').value : 'pedro';
+  const v = BD.vendedores[tallerId] || BD.vendedores['pedro'];
+  const selMat = $('material');
+  if (!selMat || !v || !v.mat) return;
+
+  const mats = Object.keys(v.mat);
+  selMat.innerHTML = mats.map(m => `
+    <option value="${esc(m)}">${esc(m)} (${pesos(v.mat[m])} / kg)</option>
+  `).join('');
+}
+
+function calcularCotizacion() {
+  const tallerId = $('vendedor') ? $('vendedor').value : 'pedro';
+  const v = BD.vendedores[tallerId] || BD.vendedores['pedro'];
+  if (!v) return;
+
+  const mat = $('material') ? $('material').value : 'PLA';
+  const precioKg = (v.mat && v.mat[mat]) ? v.mat[mat] : 65000;
+
+  const horas = leer('horas');
+  const minutos = leer('minutos');
+  const gramos = Math.max(1, leer('gramos'));
+  const cantidad = Math.max(1, leer('cantidad'));
+  const nombrePieza = ($('nombrePieza') ? $('nombrePieza').value.trim() : '') || 'Prototipo 3D';
+
+  const horasNum = horas + (minutos / 60);
+
+  // 1. Costo tiempo de máquina
+  const costoTiempo = horasNum * v.hora * cantidad;
+
+  // 2. Costo material
+  const costoMaterial = (gramos * (precioKg / 1000)) * cantidad;
+
+  // 3. Margen comercial y acabado
+  const costoMargen = (costoTiempo + costoMaterial) * (v.margen / 100);
+
+  // 4. Descuentos por volumen
+  let porcentajeDesc = 0;
+  if (cantidad >= 10) porcentajeDesc = 0.10;
+  else if (cantidad >= 3) porcentajeDesc = 0.05;
+
+  const subtotal = costoTiempo + costoMaterial + costoMargen;
+  const descuento = subtotal * porcentajeDesc;
+  const total = Math.round(subtotal - descuento);
+
+  // Actualizar UI
+  if ($('costoTiempo')) $('costoTiempo').textContent = pesos(costoTiempo);
+  if ($('costoMaterial')) $('costoMaterial').textContent = pesos(costoMaterial);
+  if ($('costoMargen')) $('costoMargen').textContent = pesos(costoMargen);
+  if ($('total')) $('total').textContent = pesos(total);
+
+  if ($('filaDescuento')) {
+    if (descuento > 0) {
+      $('filaDescuento').hidden = false;
+      if ($('costoDescuento')) $('costoDescuento').textContent = `- ${pesos(descuento)} (${porcentajeDesc * 100}%)`;
+    } else {
+      $('filaDescuento').hidden = true;
+    }
+  }
+
+  // Gráfico de pastel integrado
+  renderizarGraficoPie(costoTiempo, costoMaterial, costoMargen, total);
+
+  cotizacionActual = {
+    cliente_id: BD.sesion || 'invitado',
+    cliente_nombre: 'Cliente Web',
+    vendedor_id: tallerId,
+    vendedor_nombre: v.nombre,
+    pieza_nombre: nombrePieza,
+    material: mat,
+    horas,
+    minutos,
+    gramos,
+    cantidad,
+    costo_tiempo: costoTiempo,
+    costo_material: costoMaterial,
+    costo_margen: costoMargen,
+    descuento,
+    total
+  };
+}
+
+function renderizarGraficoPie(cTiempo, cMat, cMargen, cTotal) {
+  const cont = $('contenedorGraficoPie');
+  if (!cont) return;
+
+  const suma = cTiempo + cMat + cMargen;
+  if (suma <= 0) {
+    cont.innerHTML = '<p class="suave">Ingresa los datos para ver la distribución porcentual.</p>';
+    return;
+  }
+
+  const pTiempo = Math.round((cTiempo / suma) * 100);
+  const pMat = Math.round((cMat / suma) * 100);
+  const pMargen = Math.max(0, 100 - pTiempo - pMat);
+
+  const radio = 68;
+  const perimetro = 2 * Math.PI * radio;
+
+  const dashTiempo = (pTiempo / 100) * perimetro;
+  const dashMat = (pMat / 100) * perimetro;
+  const dashMargen = (pMargen / 100) * perimetro;
+
+  const offsetTiempo = 0;
+  const offsetMat = -dashTiempo;
+  const offsetMargen = -(dashTiempo + dashMat);
+
+  cont.innerHTML = `
+    <div class="grafico-pie-svg-wrapper">
+      <svg class="grafico-pie-svg" viewBox="0 0 190 190" aria-label="Distribución del costo de impresión 3D">
+        <circle class="grafico-pie-sector" cx="95" cy="95" r="${radio}"
+          stroke="var(--acento-tiempo)"
+          stroke-dasharray="${dashTiempo} ${perimetro}"
+          stroke-dashoffset="${offsetTiempo}">
+        </circle>
+        <circle class="grafico-pie-sector" cx="95" cy="95" r="${radio}"
+          stroke="var(--acento-material)"
+          stroke-dasharray="${dashMat} ${perimetro}"
+          stroke-dashoffset="${offsetMat}">
+        </circle>
+        <circle class="grafico-pie-sector" cx="95" cy="95" r="${radio}"
+          stroke="var(--acento-margen)"
+          stroke-dasharray="${dashMargen} ${perimetro}"
+          stroke-dashoffset="${offsetMargen}">
+        </circle>
+      </svg>
+      <div class="grafico-pie-centro">
+        <div class="grafico-pie-centro-etiqueta">Total Neto</div>
+        <div class="grafico-pie-centro-total">${pesos(cTotal)}</div>
+      </div>
+    </div>
+
+    <div class="grafico-pie-leyenda">
+      <div class="grafico-pie-item">
+        <span><span class="grafico-pie-color-dot" style="background:var(--acento-tiempo);"></span> Tiempo de Máquina</span>
+        <strong>${pTiempo}% <span class="mono" style="color:var(--texto-secundario); font-weight:normal; font-size:0.8rem;">(${pesos(cTiempo)})</span></strong>
+      </div>
+      <div class="grafico-pie-item">
+        <span><span class="grafico-pie-color-dot" style="background:var(--acento-material);"></span> Filamento / Resina</span>
+        <strong>${pMat}% <span class="mono" style="color:var(--texto-secundario); font-weight:normal; font-size:0.8rem;">(${pesos(cMat)})</span></strong>
+      </div>
+      <div class="grafico-pie-item">
+        <span><span class="grafico-pie-color-dot" style="background:var(--acento-margen);"></span> Margen & Taller</span>
+        <strong>${pMargen}% <span class="mono" style="color:var(--texto-secundario); font-weight:normal; font-size:0.8rem;">(${pesos(cMargen)})</span></strong>
+      </div>
+    </div>
+  `;
+}
+
+/* -------------------------------------------------------------
+   8. COMPROBANTE OFICIAL / TICKET MODAL
+   ------------------------------------------------------------- */
+function abrirComprobante(cot) {
+  if ($('ticketId')) $('ticketId').textContent = cot.id || 'COT-OFICIAL';
+  if ($('ticketFecha')) $('ticketFecha').textContent = `Fecha: ${cot.fecha || new Date().toISOString().slice(0, 10)}`;
+  if ($('ticketCliente')) $('ticketCliente').textContent = cot.cliente_nombre || 'Cliente Web';
+  if ($('ticketTaller')) $('ticketTaller').textContent = cot.vendedor_nombre || 'Pedro Impresiones 3D';
+  if ($('ticketPieza')) $('ticketPieza').textContent = cot.pieza_nombre || 'Pieza 3D';
+  if ($('ticketMaterial')) $('ticketMaterial').textContent = cot.material || 'PLA';
+  if ($('ticketTiempo')) $('ticketTiempo').textContent = `${cot.horas || 0}h ${cot.minutos || 0}m`;
+  if ($('ticketPeso')) $('ticketPeso').textContent = `${cot.gramos || 0} g`;
+  if ($('ticketCantidad')) $('ticketCantidad').textContent = `${cot.cantidad || 1} ud`;
+  if ($('ticketCostoTiempo')) $('ticketCostoTiempo').textContent = pesos(cot.costo_tiempo || 0);
+  if ($('ticketCostoMaterial')) $('ticketCostoMaterial').textContent = pesos(cot.costo_material || 0);
+  if ($('ticketCostoMargen')) $('ticketCostoMargen').textContent = pesos(cot.costo_margen || 0);
+  if ($('ticketTotal')) $('ticketTotal').textContent = `${pesos(cot.total || 0)} COP`;
+
+  abrirModal('modalComprobante');
+
+  const btnCerrar = $('btnCerrarModalTicket');
+  if (btnCerrar) btnCerrar.onclick = cerrarTodosLosModales;
+
+  const btnCerrarAbajo = $('btnCerrarModalTicketAbajo');
+  if (btnCerrarAbajo) btnCerrarAbajo.onclick = cerrarTodosLosModales;
+
+  const btnImp = $('btnImprimirTicket');
+  if (btnImp) btnImp.onclick = () => window.print();
+}
+
+/* -------------------------------------------------------------
+   9. MODAL "QUIERO VENDER" (REGISTRO DE TALLER)
+   ------------------------------------------------------------- */
+function inicializarRegistroTaller() {
+  const btnNav = $('btnQuieroVenderNav');
+  const btnHero = $('btnHeroQuieroVender');
+  const btnUnirme = $('btnUnirmeCreadores');
+  const btnFooter = $('linkFooterQuieroVender');
+
+  [btnNav, btnHero, btnUnirme, btnFooter].forEach(btn => {
+    if (btn) {
+      btn.onclick = e => {
+        e.preventDefault();
+        abrirModal('modalQuieroVender');
+      };
+    }
+  });
+
+  const btnCerrar = $('btnCerrarModalVender');
+  if (btnCerrar) btnCerrar.onclick = cerrarTodosLosModales;
+
+  const btnEnviar = $('btnEnviarRegistroTaller');
+  if (btnEnviar) {
+    btnEnviar.onclick = async () => {
+      const nombre = $('regTallerNombre') ? $('regTallerNombre').value.trim() : '';
+      const creador = $('regTallerCreador') ? $('regTallerCreador').value.trim() : '';
+      const ciudad = $('regTallerCiudad') ? $('regTallerCiudad').value.trim() : '';
+      const tel = $('regTallerTel') ? $('regTallerTel').value.trim() : '';
+      const maquinas = $('regTallerMaquinas') ? $('regTallerMaquinas').value.trim() : '';
+      const bio = $('regTallerBio') ? $('regTallerBio').value.trim() : '';
+
+      if (!nombre || !creador || !tel) {
+        mostrarToast('Por favor completa tu nombre, taller y WhatsApp', 'error');
+        return;
+      }
+
+      btnEnviar.disabled = true;
+      btnEnviar.textContent = 'Registrando tu taller...';
+
+      const nuevoId = 'taller_' + Math.random().toString(36).substring(2, 7);
+      const nuevoTaller = {
+        id: nuevoId,
+        nombre,
+        creador,
+        avatar: '🛠️',
+        nota: bio || 'Taller especializado en manufactura aditiva y prototipado rápido.',
+        maquinas: maquinas || 'Impresión 3D FDM',
+        hora: 3000,
+        margen: 20,
+        tel,
+        ciudad: ciudad || 'Colombia',
+        insignia: 'Taller Nuevo · En Verificación',
+        mat: { PLA: 60000, PETG: 70000 }
+      };
+
+      BD.vendedores[nuevoId] = nuevoTaller;
+      guardarCacheLocal();
+
+      try {
+        await fetch(URL_PHP, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accion: 'guardar_vendedor', vendedor: nuevoTaller })
+        });
+      } catch (e) {}
+
+      btnEnviar.disabled = false;
+      btnEnviar.textContent = '✨ Registrar mi Taller en PrintAnts';
+      cerrarTodosLosModales();
+      mostrarToast(`¡Bienvenido ${creador}! Tu taller ya está activo`, 'exito');
+      renderizarCreadores();
+      inicializarCotizador();
+    };
+  }
+}
+
+/* -------------------------------------------------------------
+   10. MODAL DE CUENTA / AUTENTICACIÓN
+   ------------------------------------------------------------- */
+function inicializarAuth() {
+  const btnAuth = $('btnAbrirAuth');
+  if (btnAuth) {
+    btnAuth.onclick = () => {
+      renderizarEstadoCuenta();
+      abrirModal('modalCuenta');
+    };
+  }
+
+  const btnCerrar = $('btnCerrarModalCuenta');
+  if (btnCerrar) btnCerrar.onclick = cerrarTodosLosModales;
+}
+
+function renderizarEstadoCuenta() {
+  const cont = $('contenidoEstadoSesion');
+  if (!cont) return;
+
+  if (BD.sesion && BD.usuarios && BD.usuarios[BD.sesion]) {
+    const u = BD.usuarios[BD.sesion];
+    cont.innerHTML = `
+      <div style="text-align:center; padding:1rem 0;">
+        <span class="hero-insignia">Sesión Activa</span>
+        <h3 style="font-size:1.2rem; font-weight:800; color:var(--texto); margin:0.4rem 0;">${esc(u.nombre)}</h3>
+        <p style="color:var(--texto-secundario); font-size:0.88rem; margin-bottom:1.5rem;">${esc(u.correo)}</p>
+        <button type="button" class="btn secundario sm" id="btnCerrarSesion">Cerrar Sesión</button>
+      </div>
+    `;
+    const btnSalir = $('btnCerrarSesion');
+    if (btnSalir) {
+      btnSalir.onclick = () => {
+        BD.sesion = null;
+        guardarCacheLocal();
+        mostrarToast('Sesión cerrada', 'info');
+        renderizarEstadoCuenta();
+        if ($('textoBtnAuth')) $('textoBtnAuth').textContent = 'Ingresar';
+      };
+    }
+  } else {
+    cont.innerHTML = `
+      <form id="formAuth" onsubmit="return false;">
+        <label for="inputAuthCorreo">Correo Electrónico</label>
+        <input id="inputAuthCorreo" type="email" placeholder="hola@ejemplo.com" required>
+
+        <label for="inputAuthClave">Contraseña</label>
+        <input id="inputAuthClave" type="password" placeholder="••••••••" required>
+
+        <button type="submit" class="btn" id="btnEjecutarLogin" style="width:100%; margin-top:1.5rem;">
+          Iniciar Sesión / Entrar
+        </button>
+        <p style="text-align:center; font-size:0.78rem; color:var(--texto-secundario); margin-top:1rem;">
+          Si no tienes cuenta se creará automáticamente en modo seguro.
+        </p>
+      </form>
+    `;
+
+    const btnLogin = $('btnEjecutarLogin');
+    if (btnLogin) {
+      btnLogin.onclick = () => {
+        const correo = $('inputAuthCorreo') ? $('inputAuthCorreo').value.trim() : '';
+        const clave = $('inputAuthClave') ? $('inputAuthClave').value : '';
+        if (!correo || clave.length < 4) {
+          mostrarToast('Ingresa un correo y contraseña de al menos 4 caracteres', 'error');
+          return;
+        }
+
+        const idLocal = 'u_' + Math.random().toString(36).substring(2, 8);
+        BD.usuarios = BD.usuarios || {};
+        BD.usuarios[idLocal] = {
+          id: idLocal,
+          correo,
+          nombre: correo.split('@')[0]
+        };
+        BD.sesion = idLocal;
+        guardarCacheLocal();
+
+        if ($('textoBtnAuth')) $('textoBtnAuth').textContent = BD.usuarios[idLocal].nombre;
+        mostrarToast('¡Bienvenido a PrintAnts!', 'exito');
+        cerrarTodosLosModales();
+      };
+    }
+  }
+}
+
+/* -------------------------------------------------------------
+   11. PESTAÑAS "¿CÓMO FUNCIONA?"
+   ------------------------------------------------------------- */
+function inicializarComoFunciona() {
+  const btnCompradores = $('pestanaCompradores');
+  const btnCreadores = $('pestanaCreadores');
+  const bloqueCompradores = $('bloquePasosCompradores');
+  const bloqueCreadores = $('bloquePasosCreadores');
+
+  if (btnCompradores && btnCreadores) {
+    btnCompradores.onclick = () => {
+      btnCompradores.classList.add('activa');
+      btnCreadores.classList.remove('activa');
+      if (bloqueCompradores) bloqueCompradores.hidden = false;
+      if (bloqueCreadores) bloqueCreadores.hidden = true;
+    };
+
+    btnCreadores.onclick = () => {
+      btnCreadores.classList.add('activa');
+      btnCompradores.classList.remove('activa');
+      if (bloqueCompradores) bloqueCompradores.hidden = true;
+      if (bloqueCreadores) bloqueCreadores.hidden = false;
+    };
+  }
+}
+
+/* -------------------------------------------------------------
+   12. CATEGORÍAS & FILTROS DE BÚSQUEDA
+   ------------------------------------------------------------- */
+function inicializarFiltros() {
+  // Filtro por tarjetas de categorías
+  document.querySelectorAll('[data-cat]').forEach(card => {
+    card.onclick = () => {
+      document.querySelectorAll('[data-cat]').forEach(c => c.classList.remove('activa'));
+      card.classList.add('activa');
+      const cat = card.getAttribute('data-cat');
+      if (cat === 'personalizado') {
+        window.location.hash = '#cotizador';
+        const cot = $('cotizador');
+        if (cot) cot.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+      filtroCategoriaActual = cat;
+      if ($('selectFiltroCategoria')) $('selectFiltroCategoria').value = cat;
+      renderizarProductos();
+
+      const expl = $('explorar');
+      if (expl) expl.scrollIntoView({ behavior: 'smooth' });
+    };
+  });
+
+  // Dropdown de categorías
+  const selCat = $('selectFiltroCategoria');
+  if (selCat) {
+    selCat.onchange = () => {
+      filtroCategoriaActual = selCat.value;
+      document.querySelectorAll('[data-cat]').forEach(c => {
+        if (c.getAttribute('data-cat') === selCat.value) c.classList.add('activa');
+        else c.classList.remove('activa');
+      });
+      renderizarProductos();
+    };
+  }
+
+  // Ordenamiento
+  const selOrd = $('selectOrdenarProducto');
+  if (selOrd) {
+    selOrd.onchange = () => {
+      ordenActual = selOrd.value;
+      renderizarProductos();
+    };
+  }
+
+  // Búsqueda en vivo
+  const inpBusq = $('inputBuscarProducto');
+  if (inpBusq) {
+    inpBusq.oninput = () => {
+      busquedaActual = inpBusq.value.trim();
+      renderizarProductos();
+    };
+  }
+
+  // Click en items del hero escaparate
+  document.querySelectorAll('[data-producto-click]').forEach(el => {
+    el.onclick = () => {
+      const id = el.getAttribute('data-producto-click');
+      abrirDetalleProducto(id);
+    };
+  });
+
+  // Botón abrir favoritos en la cabecera
+  const btnFavs = $('btnAbrirFavoritos');
+  if (btnFavs) {
+    btnFavs.onclick = () => {
+      window.location.hash = '#explorar';
+      const favIds = Object.keys(BD.favoritos);
+      if (!favIds.length) {
+        mostrarToast('Aún no has guardado creaciones favoritas', 'info');
+        return;
+      }
+      mostrarToast(`Mostrando tus ${favIds.length} creaciones guardadas`, 'info');
+      // Filtramos en vivo mostrando solo favoritos
+      const grid = $('gridProductos');
+      if (!grid) return;
+      const listaFavs = BD.productos.filter(p => BD.favoritos[p.id]);
+      grid.innerHTML = listaFavs.map(p => {
+        const creador = BD.vendedores[p.creador_id] || {};
+        const handleAutor = p.creador_handle || creador.handle || ('@' + p.creador_nombre.replace(/\s+/g, ''));
+        return `
+        <div class="producto-tarjeta" data-prod-id="${esc(p.id)}">
+          <div class="producto-imagen-box" style="background: linear-gradient(135deg, ${esc(p.color_muestra)}18, var(--fondo-suave));">
+            <span class="badge-producto-tag">❤️ Favorito</span>
+            <button type="button" class="btn-favorito-prod activo" data-fav-btn="${esc(p.id)}" aria-label="Favorito">❤️</button>
+            <div class="producto-icono-grande">${p.icono || '📦'}</div>
+          </div>
+          <div class="producto-cuerpo">
+            <div>
+              <div class="producto-categoria-texto">${esc(p.categoria_nombre)}</div>
+              <h3 class="producto-titulo">${esc(p.nombre)}</h3>
+              <div class="producto-creador-fila">
+                <span>Creado por <b style="color:var(--secundario);">${esc(handleAutor)}</b> · ${esc(p.ciudad)}</span>
+              </div>
+            </div>
+            <div class="producto-pie-tarjeta">
+              <span class="producto-precio">${pesos(p.precio)}</span>
+              <button type="button" class="btn sm" data-ver-detalle="${esc(p.id)}">Ver Detalle</button>
+            </div>
+          </div>
+        </div>
+      `;
+      }).join('');
+
+      grid.querySelectorAll('[data-ver-detalle]').forEach(btn => {
+        btn.onclick = () => abrirDetalleProducto(btn.getAttribute('data-ver-detalle'));
+      });
+      grid.querySelectorAll('[data-fav-btn]').forEach(btn => {
+        btn.onclick = () => toggleFavorito(btn.getAttribute('data-fav-btn'));
+      });
+    };
+  }
+}
+
+/* -------------------------------------------------------------
+   13. ARRANQUE
+   ------------------------------------------------------------- */
+document.addEventListener('DOMContentLoaded', () => {
+  inicializarTema();
+  cerrarTodosLosModales();
+  actualizarContadorFavoritos();
+  renderizarProductos();
+  renderizarCreadores();
+  inicializarCotizador();
+  inicializarComoFunciona();
+  inicializarFiltros();
+  inicializarRegistroTaller();
+  inicializarAuth();
+  sincronizarConPHP();
+
+  // Soporte menú móvil
+  const btnMenuMovil = $('btnMenuMovil');
+  const menuNav = $('menuNavegacion');
+  if (btnMenuMovil && menuNav) {
+    btnMenuMovil.onclick = () => {
+      menuNav.classList.toggle('abierto-movil');
+    };
+    menuNav.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', () => menuNav.classList.remove('abierto-movil'));
+    });
+  }
+});
